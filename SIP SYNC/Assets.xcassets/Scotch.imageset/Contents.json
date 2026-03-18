@@ -1,0 +1,23 @@
+{
+  "images" : [
+    {
+      "filename" : "Whiskey Glasses_ Rocks Glasses for Scotch & Bourbon _ Crate & Barrel.jpeg",
+      "idiom" : "universal",
+      "scale" : "1x"
+    },
+    {
+      "filename" : "Whiskey Glasses_ Rocks Glasses for Scotch & Bourbon _ Crate & Barrel 1.jpeg",
+      "idiom" : "universal",
+      "scale" : "2x"
+    },
+    {
+      "filename" : "Whiskey Glasses_ Rocks Glasses for Scotch & Bourbon _ Crate & Barrel 2.jpeg",
+      "idiom" : "universal",
+      "scale" : "3x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

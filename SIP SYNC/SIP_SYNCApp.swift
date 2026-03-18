@@ -11,7 +11,7 @@ import SwiftUI
 struct SIP_SYNCApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            SplashView()
         }
     }
 }
