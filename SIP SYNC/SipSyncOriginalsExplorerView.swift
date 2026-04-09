@@ -14,6 +14,7 @@ struct SipSyncOriginalsExplorerView: View {
     @State private var selectedContentItem: (ContentItem, BartenderProfile)?
     @State private var searchText: String = ""
     @State private var selectedCategory: ContentCategory? = .all
+    @State private var selectedHashtag: String? = nil
     
     private let sampleData = SampleData.shared
     
@@ -21,6 +22,22 @@ struct SipSyncOriginalsExplorerView: View {
         case all = "All"
         case classes = "Classes"
         case videos = "Videos"
+    }
+    
+    /// Hashtag labels (no #) for category strip, from ambassador profiles.
+    private var hashtagFilters: [String] {
+        let raw = sampleData.sampleBartenderProfiles.flatMap(\.contentCategories)
+        let cleaned = raw.map { $0.replacingOccurrences(of: "#", with: "").trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        return Array(Set(cleaned)).sorted().prefix(5).map { $0 }
+    }
+    
+    private func profileImageForHashtag(_ tag: String) -> String {
+        if let p = sampleData.sampleBartenderProfiles.first(where: { prof in
+            prof.contentCategories.contains { $0.replacingOccurrences(of: "#", with: "").lowercased() == tag.lowercased() }
+        }) {
+            return p.profileImage
+        }
+        return "Negroni"
     }
     
     // Combine all classes and content items from profiles
@@ -50,9 +67,26 @@ struct SipSyncOriginalsExplorerView: View {
     private var filteredContent: [(id: UUID, type: ContentType, item: Any)] {
         let base = allContent
         
-        // Filter by category
         let categoryFiltered: [(id: UUID, type: ContentType, item: Any)]
-        if let category = selectedCategory {
+        if let tag = selectedHashtag {
+            let t = tag.lowercased()
+            categoryFiltered = base.filter { content in
+                switch content.type {
+                case .classItem:
+                    guard let classItem = content.item as? BartenderClass,
+                          let prof = sampleData.sampleBartenderProfiles.first(where: { $0.author.id == classItem.bartender.id })
+                    else { return false }
+                    return prof.contentCategories.contains {
+                        $0.replacingOccurrences(of: "#", with: "").lowercased() == t
+                    }
+                case .video:
+                    guard let (_, profile) = content.item as? (ContentItem, BartenderProfile) else { return false }
+                    return profile.contentCategories.contains {
+                        $0.replacingOccurrences(of: "#", with: "").lowercased() == t
+                    }
+                }
+            }
+        } else if let category = selectedCategory {
             switch category {
             case .all:
                 categoryFiltered = base
@@ -65,7 +99,6 @@ struct SipSyncOriginalsExplorerView: View {
             categoryFiltered = base
         }
         
-        // Filter by search text
         if searchText.isEmpty {
             return categoryFiltered
         }
@@ -112,138 +145,296 @@ struct SipSyncOriginalsExplorerView: View {
         }
     }
     
-    var body: some View {
-        ZStack {
-            // Dark purple background matching SipSync UI
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color(red: 0.15, green: 0.1, blue: 0.25),
-                    Color(red: 0.1, green: 0.05, blue: 0.2)
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
+    private var rowShowsClasses: Bool {
+        selectedCategory != .videos || selectedHashtag != nil
+    }
+    
+    private var rowShowsVideos: Bool {
+        selectedCategory != .classes || selectedHashtag != nil
+    }
+    
+    private var newsItems: [BartenderClass] {
+        Array(sampleData.sampleBartenderClasses.prefix(4))
+    }
+    
+    private var headerProfile: BartenderProfile? {
+        sampleData.sampleBartenderProfiles.first
+    }
+    
+    // MARK: - Layout (recipe-app style + UNP tokens)
+    
+    private var originalsTopBar: some View {
+        HStack {
+            Button {
+                presentationMode.wrappedValue.dismiss()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(UNPColors.cream)
+                    .frame(width: 40, height: 40)
+                    .background(UNPColors.cardSurface)
+                    .clipShape(Circle())
+            }
+            Spacer()
+            Text("UNP Originals")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(UNPColors.cream)
+            Spacer()
+            Color.clear.frame(width: 40, height: 40)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+        .padding(.bottom, 6)
+    }
+    
+    private var originalsSearchRow: some View {
+        HStack(spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(UNPColors.creamMuted())
+                TextField("Search your recipes", text: $searchText)
+                    .foregroundStyle(UNPColors.cream)
+                    .font(.subheadline)
+                    .textInputAutocapitalization(.never)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color.white.opacity(0.08))
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(UNPColors.creamMuted(0.2), lineWidth: 1)
             )
-            .ignoresSafeArea()
             
-            VStack(spacing: 0) {
-                // Navigation Bar
-                HStack {
-                    Button(action: {
-                        presentationMode.wrappedValue.dismiss()
-                    }) {
-                        Image(systemName: "arrow.left")
-                            .foregroundColor(.white)
-                            .font(.title3)
-                            .padding(8)
-                            .background(Color.black.opacity(0.3))
-                            .clipShape(Circle())
+            if let profile = headerProfile {
+                Image(profile.profileImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 44, height: 44)
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(UNPColors.creamMuted(0.25), lineWidth: 1))
+            }
+        }
+    }
+    
+    private var originalsPremiumBanner: some View {
+        HStack(alignment: .center, spacing: 16) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Go UNP Premium")
+                    .font(.unpDisplay(17, weight: .bold))
+                    .foregroundStyle(UNPColors.accent)
+                Text("Get full access to classes, full recipes in Pour, and ambassador tools.")
+                    .font(.unpBody(13))
+                    .foregroundStyle(UNPColors.cream)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button { } label: {
+                    Text("Start 7-day FREE trial")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(UNPColors.background)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(UNPColors.cream)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            
+            Image("Mixology Class")
+                .resizable()
+                .scaledToFill()
+                .frame(width: 100, height: 100)
+                .clipShape(RoundedRectangle(cornerRadius: UNPRadius.small, style: .continuous))
+        }
+        .padding(16)
+        .background(UNPColors.cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: UNPRadius.card, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: UNPRadius.card, style: .continuous)
+                .stroke(UNPColors.creamMuted(0.12), lineWidth: 1)
+        )
+    }
+    
+    private func originalsSectionHeader(title: String, showSeeAll: Bool) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title)
+                .font(.unpDisplay(17, weight: .semibold))
+                .foregroundStyle(UNPColors.cream)
+            Spacer()
+            if showSeeAll {
+                Button { } label: {
+                    HStack(spacing: 4) {
+                        Text("see all")
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
                     }
-                    
-                    Spacer()
-                    
-                    Text("SipSync Originals")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                    
-                    Spacer()
-                    
-                    Color.clear
-                        .frame(width: 40, height: 40)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(UNPColors.creamMuted())
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
-                .padding(.bottom, 12)
-                
-                // Search Bar
-                HStack(spacing: 12) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.gray)
-                        .font(.subheadline)
-                    
-                    TextField("Search classes and videos...", text: $searchText)
-                        .foregroundColor(.white)
-                        .font(.subheadline)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(Color.black.opacity(0.3))
-                .cornerRadius(12)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 16)
-                
-                // Category Filter
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(ContentCategory.allCases, id: \.self) { category in
-                            Button(action: {
-                                selectedCategory = category
-                            }) {
-                                Text(category.rawValue)
-                                    .font(.subheadline)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(selectedCategory == category ? .black : .white)
-                                    .padding(.horizontal, 20)
-                                    .padding(.vertical, 10)
-                                    .background(selectedCategory == category ? Color.yellow : Color.black.opacity(0.3))
-                                    .cornerRadius(20)
-                            }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 20)
+    }
+    
+    private var originalsCategorySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            originalsSectionHeader(title: "Category", showSeeAll: true)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 14) {
+                    categoryCircle(title: "All", imageName: "Negroni", isSelected: selectedHashtag == nil && selectedCategory == .all) {
+                        selectedHashtag = nil
+                        selectedCategory = .all
+                    }
+                    categoryCircle(title: "Classes", imageName: "Mixology Class", isSelected: selectedHashtag == nil && selectedCategory == .classes) {
+                        selectedHashtag = nil
+                        selectedCategory = .classes
+                    }
+                    categoryCircle(title: "Videos", imageName: "Dirty Martini", isSelected: selectedHashtag == nil && selectedCategory == .videos) {
+                        selectedHashtag = nil
+                        selectedCategory = .videos
+                    }
+                    ForEach(hashtagFilters, id: \.self) { tag in
+                        categoryCircle(
+                            title: tag.capitalized,
+                            imageName: profileImageForHashtag(tag),
+                            isSelected: selectedHashtag?.lowercased() == tag.lowercased()
+                        ) {
+                            selectedCategory = nil
+                            selectedHashtag = tag
                         }
                     }
-                    .padding(.horizontal, 20)
                 }
-                .padding(.bottom, 24)
+                .padding(.horizontal, 20)
+            }
+        }
+        .padding(.bottom, 8)
+    }
+    
+    private func categoryCircle(title: String, imageName: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 8) {
+                ZStack {
+                    Image(imageName)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 72, height: 72)
+                        .clipped()
+                        .clipShape(Circle())
+                    Circle()
+                        .fill(Color.black.opacity(0.45))
+                    Text(title)
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(UNPColors.cream)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .frame(width: 64)
+                }
+                .frame(width: 72, height: 72)
+                .overlay(
+                    Circle()
+                        .stroke(isSelected ? UNPColors.tabBarSelected : Color.clear, lineWidth: 3)
+                )
+            }
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private func originalsNewsRow(item: BartenderClass) -> some View {
+        Button {
+            selectedClass = item
+        } label: {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(item.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(UNPColors.cream)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(3)
+                    Text(item.bartender.name)
+                        .font(.caption)
+                        .foregroundStyle(UNPColors.creamMuted())
+                }
+                Spacer(minLength: 8)
+                Image(item.image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 72, height: 72)
+                    .clipShape(RoundedRectangle(cornerRadius: UNPRadius.small, style: .continuous))
+            }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 4)
+        }
+        .buttonStyle(.plain)
+    }
+    
+    var body: some View {
+        ZStack {
+            UNPColors.background.ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                originalsTopBar
                 
-                // Content Sections (Netflix-style horizontal scrolling)
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 24) {
-                        // Classes Section
-                        if (selectedCategory == .all || selectedCategory == .classes) && !classes.isEmpty {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("CLASSES")
-                                    .font(.headline)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 20)
-                                
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 16) {
-                                        ForEach(classes) { classItem in
-                                            ClassExplorerCard(classItem: classItem) {
-                                                selectedClass = classItem
-                                            }
+                    VStack(alignment: .leading, spacing: 22) {
+                        originalsSearchRow
+                            .padding(.horizontal, 20)
+                        
+                        originalsPremiumBanner
+                            .padding(.horizontal, 20)
+                        
+                        originalsCategorySection
+                        
+                        if !classes.isEmpty && rowShowsClasses {
+                            originalsSectionHeader(title: "Classes near you", showSeeAll: classes.count > 3)
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 14) {
+                                    ForEach(classes) { classItem in
+                                        ClassExplorerCard(classItem: classItem) {
+                                            selectedClass = classItem
                                         }
                                     }
-                                    .padding(.horizontal, 20)
                                 }
+                                .padding(.horizontal, 20)
                             }
                         }
                         
-                        // Videos Section
-                        if (selectedCategory == .all || selectedCategory == .videos) && !videos.isEmpty {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("VIDEOS")
-                                    .font(.headline)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 20)
-                                
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 16) {
-                                        ForEach(Array(videos.enumerated()), id: \.element.0.id) { index, videoTuple in
-                                            VideoExplorerCard(
-                                                contentItem: videoTuple.0,
-                                                profile: videoTuple.1
-                                            ) {
-                                                selectedContentItem = videoTuple
-                                            }
+                        if !videos.isEmpty && rowShowsVideos {
+                            originalsSectionHeader(title: "Original picks for you", showSeeAll: videos.count > 3)
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 14) {
+                                    ForEach(Array(videos.enumerated()), id: \.element.0.id) { _, videoTuple in
+                                        VideoExplorerCard(
+                                            contentItem: videoTuple.0,
+                                            profile: videoTuple.1
+                                        ) {
+                                            selectedContentItem = videoTuple
                                         }
                                     }
-                                    .padding(.horizontal, 20)
                                 }
+                                .padding(.horizontal, 20)
                             }
                         }
+                        
+                        if !newsItems.isEmpty {
+                            originalsSectionHeader(title: "Spotlight", showSeeAll: newsItems.count > 2)
+                            VStack(spacing: 0) {
+                                ForEach(Array(newsItems.enumerated()), id: \.element.id) { index, item in
+                                    originalsNewsRow(item: item)
+                                    if index < newsItems.count - 1 {
+                                        Divider()
+                                            .background(UNPColors.creamMuted(0.15))
+                                            .padding(.leading, 20)
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                            .background(UNPColors.cardSurface)
+                            .clipShape(RoundedRectangle(cornerRadius: UNPRadius.card, style: .continuous))
+                            .padding(.horizontal, 20)
+                        }
                     }
-                    .padding(.bottom, 100)
+                    .padding(.bottom, 36)
                 }
             }
         }
@@ -303,96 +494,84 @@ struct ClassExplorerCard: View {
                     Image(classCardImage)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
-                        .frame(width: 180, height: 240)
+                        .frame(width: 180, height: 220)
                         .clipped()
-                        .cornerRadius(12, corners: [.topLeft, .topRight])
+                        .clipShape(RoundedRectangle(cornerRadius: UNPRadius.card, style: .continuous))
                     
-                    // Gradient overlay for better text readability
                     LinearGradient(
-                        gradient: Gradient(colors: [
-                            Color.clear,
-                            Color.black.opacity(0.3),
-                            Color.black.opacity(0.7)
-                        ]),
-                        startPoint: .top,
+                        colors: [.clear, UNPColors.background.opacity(0.5), UNPColors.background.opacity(0.92)],
+                        startPoint: .center,
                         endPoint: .bottom
                     )
-                    .frame(height: 240)
-                    .cornerRadius(12, corners: [.topLeft, .topRight])
+                    .frame(height: 220)
+                    .clipShape(RoundedRectangle(cornerRadius: UNPRadius.card, style: .continuous))
                     
-                    // Top badges
                     VStack {
                         HStack {
-                            // Going badge
                             if classItem.isGoing {
                                 Text("Going")
-                                    .font(.caption2)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.black)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 3)
-                                    .background(Color(red: 0.7, green: 0.9, blue: 0.7))
-                                    .cornerRadius(6)
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(UNPColors.background)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(UNPColors.cream.opacity(0.92))
+                                    .clipShape(Capsule())
                             }
-                            
                             Spacer()
-                            
-                            // Lock icon if locked
                             if classItem.isLocked {
                                 Image(systemName: "lock.fill")
-                                    .foregroundColor(.white)
+                                    .foregroundStyle(UNPColors.cream)
                                     .font(.caption)
-                                    .padding(6)
-                                    .background(Color.black.opacity(0.6))
+                                    .padding(8)
+                                    .background(UNPColors.cardSurface.opacity(0.9))
                                     .clipShape(Circle())
                             }
                         }
-                        .padding(8)
-                        
+                        .padding(10)
                         Spacer()
                     }
                 }
+                .frame(width: 180, height: 220)
                 
-                // Bottom info section
                 VStack(alignment: .leading, spacing: 6) {
                     Text(classItem.title)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(UNPColors.cream)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                     
                     Text(classItem.bartender.name)
                         .font(.caption)
-                        .foregroundColor(.gray)
+                        .foregroundStyle(UNPColors.creamMuted())
                         .lineLimit(1)
                     
                     HStack(spacing: 4) {
                         Image(systemName: "calendar")
                             .font(.caption2)
-                            .foregroundColor(.yellow)
-                        Text("\(dateFormatter.string(from: classItem.date))")
+                            .foregroundStyle(UNPColors.accent)
+                        Text(dateFormatter.string(from: classItem.date))
                             .font(.caption2)
-                            .foregroundColor(.gray)
-                            .lineLimit(1)
+                            .foregroundStyle(UNPColors.creamMuted())
                     }
                     
                     if let price = classItem.price {
                         Text("$\(Int(price))")
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .foregroundColor(.yellow)
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(UNPColors.accent)
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
+                .padding(12)
                 .frame(width: 180, alignment: .leading)
-                .background(Color.black.opacity(0.3))
-                .cornerRadius(12, corners: [.bottomLeft, .bottomRight])
+                .background(UNPColors.cardSurface)
             }
             .frame(width: 180)
-            .cornerRadius(12)
+            .clipShape(RoundedRectangle(cornerRadius: UNPRadius.card, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: UNPRadius.card, style: .continuous)
+                    .stroke(UNPColors.creamMuted(0.12), lineWidth: 1)
+            )
         }
+        .buttonStyle(.plain)
     }
 }
 
@@ -402,71 +581,88 @@ struct VideoExplorerCard: View {
     let profile: BartenderProfile
     let onTap: () -> Void
     
+    private var mockRating: String {
+        let n = abs(contentItem.id.hashValue % 15)
+        return String(format: "%.1f", 4.4 + Double(n) / 10.0)
+    }
+    
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 0) {
-                ZStack(alignment: .center) {
+                ZStack(alignment: .topTrailing) {
                     Image(contentItem.image)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
-                        .frame(width: 180, height: 240)
+                        .frame(width: 180, height: 220)
                         .clipped()
-                        .cornerRadius(12, corners: [.topLeft, .topRight])
+                        .clipShape(RoundedRectangle(cornerRadius: UNPRadius.card, style: .continuous))
                     
-                    // Gradient overlay
                     LinearGradient(
-                        gradient: Gradient(colors: [
-                            Color.clear,
-                            Color.black.opacity(0.3),
-                            Color.black.opacity(0.7)
-                        ]),
+                        colors: [.clear, UNPColors.background.opacity(0.35)],
                         startPoint: .top,
                         endPoint: .bottom
                     )
-                    .frame(height: 240)
-                    .cornerRadius(12, corners: [.topLeft, .topRight])
+                    .frame(width: 180, height: 220)
+                    .clipShape(RoundedRectangle(cornerRadius: UNPRadius.card, style: .continuous))
                     
-                    // Play icon overlay (centered)
+                    HStack(spacing: 4) {
+                        Image(systemName: "star.fill")
+                            .font(.caption2)
+                            .foregroundStyle(UNPColors.accent)
+                        Text(mockRating)
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(UNPColors.background)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(UNPColors.cream.opacity(0.95))
+                    .clipShape(Capsule())
+                    .padding(10)
+                    
                     Image(systemName: "play.circle.fill")
-                        .foregroundColor(.white)
-                        .font(.system(size: 40))
-                        .background(Color.black.opacity(0.5))
-                        .clipShape(Circle())
+                        .foregroundStyle(UNPColors.cream)
+                        .font(.system(size: 36))
+                        .shadow(color: .black.opacity(0.4), radius: 4, x: 0, y: 2)
                 }
+                .frame(width: 180, height: 220)
                 
-                // Bottom info section
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(contentItem.title ?? "Video")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(contentItem.title ?? "UNP Original")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(UNPColors.cream)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                     
-                    Text(profile.author.name)
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                        .lineLimit(1)
-                    
-                    HStack(spacing: 4) {
-                        Image(systemName: "play.rectangle.fill")
-                            .font(.caption2)
-                            .foregroundColor(.yellow)
-                        Text("Video")
-                            .font(.caption2)
-                            .foregroundColor(.gray)
+                    HStack(spacing: 8) {
+                        Image(profile.profileImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 28, height: 28)
+                            .clipShape(Circle())
+                        Text(profile.author.name)
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(UNPColors.creamMuted())
                             .lineLimit(1)
+                        if profile.author.verified {
+                            Image(systemName: "checkmark.seal.fill")
+                                .font(.caption)
+                                .foregroundStyle(UNPColors.accent)
+                        }
+                        Spacer(minLength: 0)
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
+                .padding(12)
                 .frame(width: 180, alignment: .leading)
-                .background(Color.black.opacity(0.3))
-                .cornerRadius(12, corners: [.bottomLeft, .bottomRight])
+                .background(UNPColors.cardSurface)
             }
             .frame(width: 180)
-            .cornerRadius(12)
+            .clipShape(RoundedRectangle(cornerRadius: UNPRadius.card, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: UNPRadius.card, style: .continuous)
+                    .stroke(UNPColors.creamMuted(0.12), lineWidth: 1)
+            )
         }
+        .buttonStyle(.plain)
     }
 }
 
@@ -478,29 +674,19 @@ struct VideoDetailSheet: View {
     
     var body: some View {
         ZStack {
-            // Dark purple background
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color(red: 0.15, green: 0.1, blue: 0.25),
-                    Color(red: 0.1, green: 0.05, blue: 0.2)
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            UNPColors.background.ignoresSafeArea()
             
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    // Back Button
                     HStack {
-                        Button(action: {
+                        Button {
                             presentationMode.wrappedValue.dismiss()
-                        }) {
-                            Image(systemName: "arrow.left")
-                                .foregroundColor(.white)
-                                .font(.title3)
-                                .padding(8)
-                                .background(Color.black.opacity(0.3))
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.headline.weight(.semibold))
+                                .foregroundStyle(UNPColors.cream)
+                                .frame(width: 40, height: 40)
+                                .background(UNPColors.cardSurface)
                                 .clipShape(Circle())
                         }
                         Spacer()
@@ -508,76 +694,62 @@ struct VideoDetailSheet: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
                     
-                    // Video Image
                     ZStack(alignment: .center) {
                         Image(contentItem.image)
                             .resizable()
                             .aspectRatio(contentMode: .fill)
-                            .frame(height: 300)
+                            .frame(height: 280)
                             .clipped()
-                            .cornerRadius(20)
+                            .clipShape(RoundedRectangle(cornerRadius: UNPRadius.card, style: .continuous))
                         
-                        // Play button overlay
                         Image(systemName: "play.circle.fill")
-                            .foregroundColor(.white)
-                            .font(.system(size: 60))
-                            .background(Color.black.opacity(0.3))
-                            .clipShape(Circle())
+                            .foregroundStyle(UNPColors.cream)
+                            .font(.system(size: 56))
+                            .shadow(color: .black.opacity(0.45), radius: 6, x: 0, y: 2)
                     }
                     .padding(.horizontal, 20)
                     
-                    // Video Details
                     VStack(alignment: .leading, spacing: 16) {
-                        Text(contentItem.title ?? "SipSync Original Video")
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
+                        Text(contentItem.title ?? "UNP Original Video")
+                            .font(.title.bold())
+                            .foregroundStyle(UNPColors.cream)
                         
-                        // Bartender Info
                         HStack(spacing: 12) {
-                            Circle()
-                                .fill(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [
-                                            Color.yellow.opacity(0.5),
-                                            Color.orange.opacity(0.5)
-                                        ]),
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .frame(width: 50, height: 50)
-                                .overlay(
-                                    Text(String(profile.author.name.prefix(1)))
-                                        .font(.title3)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.white)
-                                )
+                            Image(profile.profileImage)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 52, height: 52)
+                                .clipShape(Circle())
+                                .overlay(Circle().stroke(UNPColors.creamMuted(0.2), lineWidth: 1))
                             
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(profile.author.name)
-                                    .font(.headline)
-                                    .foregroundColor(.white)
+                                HStack(spacing: 6) {
+                                    Text(profile.author.name)
+                                        .font(.headline)
+                                        .foregroundStyle(UNPColors.cream)
+                                    if profile.author.verified {
+                                        Image(systemName: "checkmark.seal.fill")
+                                            .foregroundStyle(UNPColors.accent)
+                                    }
+                                }
                                 if let location = profile.author.location {
                                     Text(location)
                                         .font(.subheadline)
-                                        .foregroundColor(.white.opacity(0.7))
+                                        .foregroundStyle(UNPColors.creamMuted())
                                 }
                             }
-                            
                             Spacer()
                         }
                         
-                        // Bio
                         Text(profile.bio)
                             .font(.body)
-                            .foregroundColor(.white.opacity(0.9))
+                            .foregroundStyle(UNPColors.creamMuted(0.85))
                             .lineSpacing(4)
-                            .padding(.top, 8)
+                            .padding(.top, 4)
                     }
                     .padding(.horizontal, 20)
                     
-                    Spacer(minLength: 100)
+                    Spacer(minLength: 80)
                 }
             }
         }
@@ -586,5 +758,6 @@ struct VideoDetailSheet: View {
 
 #Preview {
     SipSyncOriginalsExplorerView(cartItems: .constant([]))
+        .environmentObject(UNPDataStore.shared)
 }
 

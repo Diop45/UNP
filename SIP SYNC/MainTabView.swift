@@ -7,6 +7,7 @@
 import SwiftUI
 
 struct MainTabView: View {
+    @EnvironmentObject private var unpStore: UNPDataStore
     @State private var selectedTab = 0
     @State private var selectedCategory: DrinkCategory = .drinks
     @State private var cartItems: [OrderItem] = []
@@ -73,15 +74,22 @@ struct MainTabView: View {
             }
             .tag(3)
         }
-        .accentColor(.yellow)
-        .preferredColorScheme(.dark)
+        .tint(UNPColors.tabBarSelected)
+        .overlay {
+            if unpStore.showGuidedTourOverlay {
+                UNPGuidedTourOverlay(selectedTab: $selectedTab)
+            }
+        }
         .onAppear {
             // Initialize social posts from sample data
             if socialPosts.isEmpty {
                 socialPosts = SampleData.shared.sampleSocialPosts
             }
+            if !UserDefaults.standard.bool(forKey: UNPTourKeys.completed) {
+                unpStore.showGuidedTourOverlay = true
+            }
         }
-        .onChange(of: selectedTab) { newValue in
+        .onChange(of: selectedTab) { _, newValue in
             handleTabSelection(newValue)
         }
     }
@@ -105,4 +113,7 @@ struct MainTabView: View {
 
 #Preview {
     MainTabView()
+        .environmentObject(AppTheme.shared)
+        .environmentObject(UNPDataStore.shared)
+        .preferredColorScheme(AppTheme.shared.isNightMode ? .dark : .light)
 }

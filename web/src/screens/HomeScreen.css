@@ -1,0 +1,87 @@
+.unp-home__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.unp-home__brandBlock {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.unp-home__city {
+  margin: 0;
+  font-size: 1.75rem;
+  letter-spacing: -0.02em;
+}
+
+.unp-home__avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--unp-accent), #3a1510);
+  border: 2px solid var(--unp-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.unp-home__avatar span {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.unp-home__heroes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.unp-home__hero {
+  padding: 16px;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  transition: transform 0.15s ease;
+}
+
+.unp-home__hero:active {
+  transform: scale(0.99);
+}
+
+.unp-home__hero h2 {
+  margin: 8px 0 4px;
+  font-size: 1.2rem;
+}
+
+.unp-home__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.unp-home__mini {
+  padding: 10px;
+  text-decoration: none;
+  color: inherit;
+  font-size: 0.85rem;
+}
+
+.unp-home__hero--pour {
+  border-left: 3px solid var(--unp-accent);
+}
+
+.unp-home__hero--nudge {
+  border-left: 3px solid var(--unp-accent-soft);
+}
+
+.unp-home__hero--explore {
+  border-left: 3px solid rgba(245, 230, 200, 0.4);
+}

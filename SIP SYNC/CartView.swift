@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct CartView: View {
+    @EnvironmentObject var theme: AppTheme
     @Binding var cartItems: [OrderItem]
     @State private var showCheckout = false
     @State private var searchText = ""
@@ -19,16 +20,7 @@ struct CartView: View {
     
     var body: some View {
         ZStack {
-            // Dark purple background that flows from navigation
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color(red: 0.15, green: 0.1, blue: 0.25),
-                    Color(red: 0.1, green: 0.05, blue: 0.2)
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            theme.primaryBackground.ignoresSafeArea()
             
             VStack(spacing: 0) {
                 // New TopNavigationBar with raised background and shadow
@@ -48,15 +40,15 @@ struct CartView: View {
                         
                         Image(systemName: "cart")
                             .font(.system(size: 60))
-                            .foregroundColor(.gray)
+                            .foregroundColor(theme.textSecondary)
                         
                         Text("Your cart is empty")
                             .font(.title2)
-                            .foregroundColor(.white)
+                            .foregroundColor(theme.textPrimary)
                         
                         Text("Add some drinks to get started")
                             .font(.body)
-                            .foregroundColor(.gray)
+                            .foregroundColor(theme.textSecondary)
                         
                         Spacer()
                     }

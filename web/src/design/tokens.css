@@ -1,0 +1,95 @@
+:root {
+  --unp-bg-void: #000000;
+  --unp-bg-elevated: #1a1a1a;
+  /* Muted cream (matches iOS `UNPColors.creamMuted`) — replaces orange accent */
+  --unp-accent: rgba(245, 230, 200, 0.5);
+  --unp-accent-soft: rgba(245, 230, 200, 0.78);
+  /* Tab bar selected icon/label (matches iOS `UNPColors.tabBarSelected`) */
+  --unp-tab-selected: #9454fa;
+  --unp-text: #ffffff;
+  --unp-text-muted: #cccccc;
+  --unp-border: rgba(245, 230, 200, 0.22);
+  --unp-shadow-warm: 0 8px 32px rgba(245, 230, 200, 0.08), 0 2px 8px rgba(0, 0, 0, 0.6);
+  --unp-radius: 14px;
+  --unp-radius-sm: 10px;
+  --unp-tab-h: 56px;
+  --unp-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--unp-bg-void);
+  color: var(--unp-text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100dvh;
+}
+
+.unp-page {
+  min-height: 100dvh;
+  padding: 16px;
+  padding-bottom: calc(var(--unp-tab-h) + var(--unp-safe-bottom) + 20px);
+}
+
+.unp-card {
+  background: var(--unp-bg-elevated);
+  border-radius: var(--unp-radius);
+  box-shadow: var(--unp-shadow-warm);
+  border: 1px solid var(--unp-border);
+}
+
+.unp-btn-primary {
+  appearance: none;
+  border: none;
+  border-radius: var(--unp-radius-sm);
+  padding: 12px 18px;
+  font-weight: 600;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--unp-accent), var(--unp-accent-soft));
+  color: #0a0a0a;
+}
+
+.unp-btn-ghost {
+  appearance: none;
+  border: 1px solid var(--unp-border);
+  border-radius: var(--unp-radius-sm);
+  padding: 10px 16px;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  color: var(--unp-accent-soft);
+}
+
+.unp-link {
+  color: var(--unp-accent-soft);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.unp-muted {
+  color: var(--unp-text-muted);
+  font-size: 0.9rem;
+}
+
+.unp-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(245, 230, 200, 0.12);
+  color: var(--unp-accent-soft);
+  border: 1px solid var(--unp-border);
+}

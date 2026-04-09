@@ -1,0 +1,54 @@
+.unp-circles__vis {
+  margin-bottom: 20px;
+}
+
+.unp-circles__toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #222;
+  color: var(--unp-text-muted);
+}
+
+.unp-circles__bar {
+  height: 10px;
+  border-radius: 999px;
+  background: #222;
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+.unp-circles__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--unp-accent), var(--unp-accent-soft));
+}
+
+.unp-circles__rewards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.unp-circles__chat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.unp-circles__badge {
+  min-width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--unp-accent);
+  color: #0a0a0a;
+  font-size: 0.75rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

@@ -151,7 +151,7 @@ struct AddStoryView: View {
                                         LinearGradient(
                                             gradient: Gradient(colors: [
                                                 Color.yellow.opacity(0.3),
-                                                Color.orange.opacity(0.3)
+                                                UNPColors.creamMuted(0.3)
                                             ]),
                                             startPoint: .topLeading,
                                             endPoint: .bottomTrailing
@@ -185,7 +185,7 @@ struct AddStoryView: View {
                                         LinearGradient(
                                             gradient: Gradient(colors: [
                                                 Color.yellow.opacity(0.3),
-                                                Color.orange.opacity(0.3)
+                                                UNPColors.creamMuted(0.3)
                                             ]),
                                             startPoint: .topLeading,
                                             endPoint: .bottomTrailing

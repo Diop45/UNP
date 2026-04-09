@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct HomeView: View {
+    @EnvironmentObject var theme: AppTheme
     @Binding var selectedCategory: DrinkCategory
     @Binding var cartItems: [OrderItem]
     @Binding var favoriteDrinks: [Drink]
@@ -25,11 +26,8 @@ struct HomeView: View {
     @State private var showSearch = false
     @State private var selectedPostForComment: SocialPost?
     @State private var showCommentSheet = false
-    @StateObject private var tipJarManager = TipJarManager.shared
     @State private var showTipAmountSheet = false
     @State private var selectedPostForTip: SocialPost?
-    @State private var showInsufficientFundsAlert = false
-    @State private var insufficientFundsMessage = ""
     @State private var showOriginalsExplorer = false
     
     let sampleData = SampleData.shared
@@ -146,16 +144,7 @@ struct HomeView: View {
     
     var body: some View {
         ZStack {
-            // Dark purple background that flows from navigation
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color(red: 0.15, green: 0.1, blue: 0.25),
-                    Color(red: 0.1, green: 0.05, blue: 0.2)
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            theme.primaryBackground.ignoresSafeArea()
             
             VStack(spacing: 0) {
                 // New TopNavigationBar with raised background and shadow
@@ -165,11 +154,15 @@ struct HomeView: View {
                 ScrollView {
                     VStack(spacing: 24) {
                         // Search field below the navigation
-                        SearchPillField(text: $searchText) {
+                        SearchPillField(text: $searchText, placeholder: "Search Pour recipes…") {
                             showSearch = true
                         }
                             .padding(.horizontal, 20)
                             .padding(.top, 16)
+                            .padding(.bottom, 8)
+                        
+                        UNPLandingHeroSection()
+                            .padding(.horizontal, 20)
                             .padding(.bottom, 8)
                         
                         // Top hero + Originals remain when in All view
@@ -178,7 +171,7 @@ struct HomeView: View {
                             VStack(spacing: 12) {
                                 HStack {
                                     SectionHeader(
-                                        title: "SipSync Originals",
+                                        title: "UNP Originals",
                                         showChevron: true,
                                         onChevronTap: {
                                             showBartenderClasses = true
@@ -192,10 +185,10 @@ struct HomeView: View {
                                         Text("Bypass")
                                             .font(.caption)
                                             .fontWeight(.semibold)
-                                            .foregroundColor(.black)
+                                            .foregroundColor(.white)
                                             .padding(.horizontal, 12)
                                             .padding(.vertical, 6)
-                                            .background(Color.yellow)
+                                            .background(theme.accent)
                                             .cornerRadius(12)
                                     }
                                 }
@@ -217,15 +210,15 @@ struct HomeView: View {
                                 SectionHeader(title: "Personalize your feed", showChevron: false)
                     HStack {
                                     Text(selectedInterests.isEmpty ? "Tell us your drink interests" : selectedInterests.map { $0.rawValue }.prefix(3).joined(separator: ", ") + (selectedInterests.count > 3 ? "…" : ""))
-                                        .foregroundColor(.gray)
+                                        .foregroundColor(theme.textSecondary)
                         Spacer()
                                     Button(action: { showDiscovery = true }) {
                                         Text(selectedInterests.isEmpty ? "Get started" : "Edit")
                                             .font(.subheadline)
-                                            .foregroundColor(.black)
+                                            .foregroundColor(.white)
                                             .padding(.horizontal, 12)
                                             .padding(.vertical, 8)
-                                            .background(Color.yellow)
+                                            .background(theme.accent)
                                             .cornerRadius(16)
                                     }
                             }
@@ -309,6 +302,7 @@ struct HomeView: View {
                 cartItems: $cartItems,
                 favoriteDrinks: $favoriteDrinks
             )
+            .environmentObject(UNPDataStore.shared)
         }
         .sheet(isPresented: $showCommentSheet) {
             if let post = selectedPostForComment,
@@ -324,25 +318,11 @@ struct HomeView: View {
                 TipAmountSheet(
                     post: post,
                     onTipSent: { amount in
-                        let result = tipJarManager.processTip(amount: amount, bartenderId: post.author.id)
-                        if !result.isSuccess {
-                            if let errorMessage = result.errorMessage {
-                                insufficientFundsMessage = errorMessage
-                                showInsufficientFundsAlert = true
-                            }
-                        }
+                        _ = amount
                         showTipAmountSheet = false
                     }
                 )
             }
-        }
-        .alert("Insufficient Funds", isPresented: $showInsufficientFundsAlert) {
-            Button("Add Funds") {
-                // Navigate to profile to add funds
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text(insufficientFundsMessage)
         }
         .sheet(isPresented: $showOriginalsExplorer) {
             SipSyncOriginalsExplorerView(cartItems: $cartItems)
@@ -426,4 +406,6 @@ struct HomeView: View {
         selectedUserType: .constant(nil),
         socialPosts: .constant([])
     )
+    .environmentObject(AppTheme.shared)
+    .environmentObject(UNPDataStore.shared)
 }

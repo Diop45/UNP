@@ -2,59 +2,83 @@
 //  MultipleImagePicker.swift
 //  SIP SYNC
 //
-//  Image Picker for Multiple Photos
-//
 
+import PhotosUI
 import SwiftUI
 import UIKit
-
-class MultipleImagePickerCoordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-    @Binding var isPresented: Bool
-    @Binding var selectedImages: [UIImage]
-    let sourceType: UIImagePickerController.SourceType
-    
-    init(isPresented: Binding<Bool>, selectedImages: Binding<[UIImage]>, sourceType: UIImagePickerController.SourceType) {
-        _isPresented = isPresented
-        _selectedImages = selectedImages
-        self.sourceType = sourceType
-    }
-    
-    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-        if let image = info[.originalImage] as? UIImage {
-            selectedImages.append(image)
-        }
-        isPresented = false
-    }
-    
-    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-        isPresented = false
-    }
-}
 
 struct MultipleImagePicker: UIViewControllerRepresentable {
     @Binding var isPresented: Bool
     @Binding var selectedImages: [UIImage]
-    let sourceType: UIImagePickerController.SourceType
+    var sourceType: UIImagePickerController.SourceType = .photoLibrary
     
-    func makeCoordinator() -> MultipleImagePickerCoordinator {
-        MultipleImagePickerCoordinator(isPresented: $isPresented, selectedImages: $selectedImages, sourceType: sourceType)
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
     }
     
-    func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker = UIImagePickerController()
-        picker.sourceType = sourceType
-        picker.delegate = context.coordinator
-        picker.allowsEditing = false
-        if sourceType == .camera {
-            picker.cameraCaptureMode = .photo
-            picker.cameraDevice = .rear
+    func makeUIViewController(context: Context) -> UIViewController {
+        if sourceType == .camera, UIImagePickerController.isSourceTypeAvailable(.camera) {
+            let picker = UIImagePickerController()
+            picker.sourceType = .camera
+            picker.delegate = context.coordinator
+            picker.allowsEditing = false
+            return picker
         }
+        
+        var config = PHPickerConfiguration()
+        config.selectionLimit = 0
+        config.filter = .images
+        let picker = PHPickerViewController(configuration: config)
+        picker.delegate = context.coordinator
         return picker
     }
     
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
+    
+    final class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate, PHPickerViewControllerDelegate {
+        private let parent: MultipleImagePicker
+        
+        init(_ parent: MultipleImagePicker) {
+            self.parent = parent
+        }
+        
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.isPresented = false
+        }
+        
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            if let image = info[.originalImage] as? UIImage {
+                parent.selectedImages.append(image)
+            }
+            parent.isPresented = false
+        }
+        
+        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+            guard !results.isEmpty else {
+                parent.isPresented = false
+                return
+            }
+            
+            let group = DispatchGroup()
+            var loaded: [UIImage] = []
+            
+            for result in results {
+                if result.itemProvider.canLoadObject(ofClass: UIImage.self) {
+                    group.enter()
+                    result.itemProvider.loadObject(ofClass: UIImage.self) { object, _ in
+                        defer { group.leave() }
+                        if let image = object as? UIImage {
+                            loaded.append(image)
+                        }
+                    }
+                }
+            }
+            
+            group.notify(queue: .main) {
+                self.parent.selectedImages.append(contentsOf: loaded)
+                self.parent.isPresented = false
+            }
+        }
+    }
 }
-
-
-
 

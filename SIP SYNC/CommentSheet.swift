@@ -229,5 +229,16 @@ struct CommentRow: View {
     }
 }
 
+private struct CommentSheetPreview: View {
+    @State private var post = SampleData.shared.sampleSocialPosts[0]
+
+    var body: some View {
+        CommentSheet(post: $post, currentUser: SampleData.shared.sampleSocialUsers[0])
+    }
+}
+
+#Preview("Comment sheet") {
+    CommentSheetPreview()
+}
 
 

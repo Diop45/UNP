@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "SIP SYNC LOGO.png",
+      "filename" : "UNP APP ICON .png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -13,7 +13,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "SIP SYNC LOGO 1.png",
+      "filename" : "UNP APP ICON  1.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -25,7 +25,7 @@
           "value" : "tinted"
         }
       ],
-      "filename" : "SIP SYNC LOGO 2.png",
+      "filename" : "UNP APP ICON  2.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"

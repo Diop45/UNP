@@ -1,0 +1,49 @@
+.unp-profile__head {
+  margin-bottom: 16px;
+}
+
+.unp-profile__logo {
+  margin-bottom: 12px;
+}
+
+.unp-profile__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.unp-profile__cell {
+  padding: 12px;
+  text-decoration: none;
+  color: inherit;
+  font-size: 0.9rem;
+}
+
+.unp-profile__rewards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.unp-profile__set {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #222;
+  color: var(--unp-text-muted);
+}
+
+.unp-profile__set--col {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.unp-profile__set select {
+  border-radius: var(--unp-radius-sm);
+  border: 1px solid var(--unp-border);
+  background: #111;
+  color: var(--unp-text);
+  padding: 10px;
+}

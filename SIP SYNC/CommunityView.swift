@@ -1,279 +1,470 @@
-//
-//  CommunityView.swift
-//  SIP SYNC
-//
-//  Created by Diop Shumake on 10/23/25.
-//
-
 import SwiftUI
+import PhotosUI
+import UIKit
 
 struct CommunityView: View {
-    @StateObject private var userManager = UserManager.shared
-    @State private var searchText = ""
-    @State private var selectedUserType: UserType? = nil
-    @State private var socialPosts: [SocialPost] = []
-    @State private var favoriteDrinks: [Drink] = []
-    @State private var cartItems: [OrderItem] = []
-    @State private var showSearch = false
-    @State private var selectedPostForComment: SocialPost?
-    @State private var showCommentSheet = false
-    @StateObject private var tipJarManager = TipJarManager.shared
-    @State private var showTipAmountSheet = false
-    @State private var selectedPostForTip: SocialPost?
-    @State private var showInsufficientFundsAlert = false
-    @State private var insufficientFundsMessage = ""
+    @EnvironmentObject private var store: UNPDataStore
+    @State private var selectedEvent: UNPEvent?
+    @State private var showPourCircle = false
+    @State private var selectedDay: Date = .now
     
-    let sampleData = SampleData.shared
-    
-    // Current user as SocialUser
-    private var currentSocialUser: SocialUser {
-        if let user = userManager.currentUser {
-            return SocialUser(
-                name: user.name,
-                username: user.name.lowercased().replacingOccurrences(of: " ", with: ""),
-                profileImage: user.profileImage,
-                userType: user.userType,
-                location: user.location,
-                verified: false
-            )
-        }
-        return sampleData.sampleSocialUsers.first ?? SocialUser(
-            name: "User",
-            username: "user",
-            userType: .consumer,
-            location: "Detroit"
-        )
+    private var headerName: String {
+        let trimmed = store.user.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Friend" : trimmed
     }
     
-    var filteredPosts: [SocialPost] {
-        let base: [SocialPost]
-        if let userType = selectedUserType {
-            base = socialPosts.filter { $0.author.userType == userType }
-        } else {
-            base = socialPosts
+    private var calendarDays: [Date] {
+        let base = Calendar.current.startOfDay(for: selectedDay)
+        return (-2...4).compactMap { Calendar.current.date(byAdding: .day, value: $0, to: base) }
+    }
+    
+    private var dayEvents: [UNPEvent] {
+        store.events
+            .filter { Calendar.current.isDate($0.startTime, inSameDayAs: selectedDay) }
+            .sorted { $0.startTime < $1.startTime }
+    }
+    
+    private var timelineEvents: [UNPEvent] {
+        if dayEvents.count >= 4 { return dayEvents }
+        let fallback = store.events.sorted { $0.startTime < $1.startTime }
+        let combined = dayEvents + fallback.filter { !dayEvents.contains($0) }
+        return Array(combined.prefix(4))
+    }
+    
+    private var totalUnreadCount: Int {
+        store.events.reduce(into: 0) { result, event in
+            result += min(9, store.messages(for: event.id).count)
         }
-        return base.sorted { $0.createdAt > $1.createdAt }
     }
     
     var body: some View {
-        ZStack {
-            // Dark purple background that flows from navigation
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color(red: 0.15, green: 0.1, blue: 0.25),
-                    Color(red: 0.1, green: 0.05, blue: 0.2)
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+        VStack(alignment: .leading, spacing: 0) {
+            header
+            daySelector
+            ScrollView(.vertical, showsIndicators: false) {
+                timelineSchedule
+            }
+        }
+        .background(Color.white.ignoresSafeArea())
+        .sheet(item: $selectedEvent) { event in
+            NavigationStack {
+                CommunityEventRoomView(event: event)
+            }
+            .environmentObject(store)
+        }
+        .sheet(isPresented: $showPourCircle) {
+            NavigationStack {
+                UNPPourCircleView()
+            }
+            .environmentObject(store)
+        }
+        .onAppear {
+            if let first = calendarDays.first {
+                selectedDay = first
+            } else {
+                selectedDay = Calendar.current.startOfDay(for: .now)
+            }
+        }
+    }
+    
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: "chevron.left")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.black.opacity(0.7))
+                Spacer()
+                Circle()
+                    .fill(UNPColors.creamMuted(0.25))
+                    .frame(width: 34, height: 34)
+                    .overlay(Text(String(headerName.prefix(1))).font(.subheadline.bold()))
+            }
+            .padding(.bottom, 2)
             
-            VStack(spacing: 0) {
-                // TopNavigationBar with raised background and shadow
-                TopNavigationBar(selectedCategory: $selectedUserType)
-                
-                // Unified scrollable content
-                ScrollView {
-                    VStack(spacing: 24) {
-                        // Search field below the navigation
-                        SearchPillField(text: $searchText) {
-                            showSearch = true
+            Text("Today's tasks")
+                .font(.system(size: 28, weight: .semibold, design: .rounded))
+                .foregroundStyle(.black)
+            
+            Text(formattedSelectedDay)
+                .font(.system(size: 40, weight: .bold, design: .rounded))
+                .foregroundStyle(.black)
+            
+            Text("\(timelineEvents.count) tasks today · \(totalUnreadCount) messages")
+                .font(.subheadline)
+                .foregroundStyle(.gray)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 14)
+    }
+    
+    private var daySelector: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(calendarDays, id: \.self) { day in
+                    Button {
+                        selectedDay = day
+                    } label: {
+                        VStack(spacing: 2) {
+                            Text(dayNumber(day))
+                                .font(.headline.weight(.semibold))
+                            Text(dayLabel(day))
+                                .font(.caption2)
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 16)
-                        .padding(.bottom, 8)
-                        
-                        // Community header
-                        VStack(alignment: .leading, spacing: 12) {
-                            SectionHeader(
-                                title: "Community Feed",
-                                subtitle: "Connect with fellow enthusiasts",
-                                showChevron: false
-                            )
-                            .padding(.horizontal, 20)
-                        }
-                        
-                        // Social feed list
-                        LazyVStack(spacing: 24) {
-                            ForEach(filteredPosts) { post in
-                                SocialPostCard(
-                                    post: post,
-                                    cartItems: $cartItems,
-                                    onLike: {
-                                        handleLike(for: post)
-                                    },
-                                    onAddToCart: {
-                                        // Find or create drink based on post
-                                        let drink = findOrCreateDrinkFromPost(post)
-                                        let orderItem = OrderItem(drink: drink, quantity: 1, price: drink.price)
-                                        cartItems.append(orderItem)
-                                    },
-                                    onComment: {
-                                        selectedPostForComment = post
-                                        showCommentSheet = true
-                                    },
-                                    onRepost: {
-                                        handleRepost(for: post)
-                                    },
-                                    onTip: {
-                                        selectedPostForTip = post
-                                        showTipAmountSheet = true
-                                    }
-                                )
-                                .padding(.horizontal, 20)
-                                .padding(.bottom, 4)
-                            }
-                        }
+                        .foregroundStyle(Calendar.current.isDate(day, inSameDayAs: selectedDay) ? Color.white : .black.opacity(0.65))
+                        .frame(width: 54, height: 68)
+                        .background(
+                            Calendar.current.isDate(day, inSameDayAs: selectedDay)
+                            ? UNPColors.tabBarSelected
+                            : Color.black.opacity(0.06)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                     }
-                    .padding(.bottom, 100)
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+        }
+    }
+    
+    private var eventStories: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 14) {
+                ForEach(dayEvents) { event in
+                    Button {
+                        selectedEvent = event
+                    } label: {
+                        VStack(spacing: 8) {
+                            Circle()
+                                .strokeBorder(Color.gray.opacity(0.35), lineWidth: 2)
+                                .background(Circle().fill(Color.black.opacity(0.03)))
+                                .frame(width: 58, height: 58)
+                                .overlay(
+                                    Text(event.name.prefix(1))
+                                        .font(.headline.bold())
+                                        .foregroundStyle(.black)
+                                )
+                            Text(shortEventTitle(event))
+                                .font(.caption)
+                                .foregroundStyle(.black.opacity(0.65))
+                                .lineLimit(1)
+                        }
+                        .frame(width: 72)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 2)
+            .padding(.bottom, 10)
+        }
+    }
+    
+    private var timelineSchedule: some View {
+        VStack(spacing: 16) {
+            ForEach(Array(timelineEvents.enumerated()), id: \.element.id) { index, event in
+                HStack(alignment: .top, spacing: 12) {
+                    Text(timeLabel(for: event.startTime, fallbackIndex: index))
+                        .font(.caption)
+                        .foregroundStyle(.gray)
+                        .frame(width: 56, alignment: .leading)
+                        .padding(.top, 10)
+                    
+                    Button {
+                        selectedEvent = event
+                    } label: {
+                        CommunityTimelineCard(
+                            event: event,
+                            onChatIconTap: {
+                                showPourCircle = true
+                            }
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }
-        .sheet(isPresented: $showSearch) {
-            UnifiedSearchView(
-                searchText: $searchText,
-                isPresented: $showSearch,
-                cartItems: $cartItems,
-                favoriteDrinks: $favoriteDrinks
-            )
+        .padding(.horizontal, 20)
+        .padding(.bottom, 36)
+    }
+    
+    private func dayLabel(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE"
+        return formatter.string(from: date)
+    }
+    
+    private func dayNumber(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd"
+        return formatter.string(from: date)
+    }
+    
+    private func shortEventTitle(_ event: UNPEvent) -> String {
+        event.name.components(separatedBy: " ").first ?? "Event"
+    }
+    
+    private var formattedSelectedDay: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM dd"
+        return formatter.string(from: selectedDay)
+    }
+    
+    private func timeLabel(for date: Date, fallbackIndex: Int) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "hh:mm a"
+        let candidate = formatter.string(from: date)
+        if candidate.isEmpty {
+            let base = 9 + fallbackIndex
+            return String(format: "%02d:00 AM", min(base, 11))
         }
-        .sheet(isPresented: $showCommentSheet) {
-            if let post = selectedPostForComment,
-               let index = socialPosts.firstIndex(where: { $0.id == post.id }) {
-                CommentSheet(post: Binding(
-                    get: { socialPosts[index] },
-                    set: { socialPosts[index] = $0 }
-                ), currentUser: currentSocialUser)
+        return candidate
+    }
+}
+
+private struct CommunityTimelineCard: View {
+    @EnvironmentObject private var store: UNPDataStore
+    let event: UNPEvent
+    let onChatIconTap: () -> Void
+
+    private var latest: UNPCommunityMessage? {
+        store.messages(for: event.id).last
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: -8) {
+                ForEach(0..<4, id: \.self) { idx in
+                    Circle()
+                        .strokeBorder(UNPColors.accent.opacity(0.45), lineWidth: 1.5)
+                        .background(Circle().fill(UNPColors.cardSurface))
+                        .frame(width: 24, height: 24)
+                        .overlay(
+                            Image(systemName: "person.fill")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(UNPColors.accent.opacity(0.55 + Double(idx) * 0.1))
+                        )
+                }
+                Spacer()
+                Button(action: onChatIconTap) {
+                    Circle()
+                        .fill(UNPColors.cardSurface)
+                        .frame(width: 30, height: 30)
+                        .overlay(
+                            Image(systemName: "message.fill")
+                                .font(.caption)
+                                .foregroundStyle(UNPColors.accent)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+
+            Text(event.name)
+                .font(.title3.bold())
+                .foregroundStyle(UNPColors.accent)
+                .lineLimit(2)
+
+            Text(latest?.text ?? "Tap to join this event chat and share your experience.")
+                .font(.subheadline)
+                .foregroundStyle(UNPColors.accent.opacity(0.78))
+                .lineLimit(2)
+
+            HStack {
+                Text(event.venueName)
+                    .font(.caption)
+                    .foregroundStyle(UNPColors.accent.opacity(0.65))
+                Spacer()
+                if store.messages(for: event.id).count > 0 {
+                    Text("\(store.messages(for: event.id).count) msgs")
+                        .font(.caption2.bold())
+                        .foregroundStyle(UNPColors.accent)
+                }
             }
         }
-        .sheet(isPresented: $showTipAmountSheet) {
-            if let post = selectedPostForTip {
-                TipAmountSheet(
-                    post: post,
-                    onTipSent: { amount in
-                        let result = tipJarManager.processTip(amount: amount, bartenderId: post.author.id)
-                        if !result.isSuccess {
-                            if let errorMessage = result.errorMessage {
-                                insufficientFundsMessage = errorMessage
-                                showInsufficientFundsAlert = true
-                            }
-                        }
-                        showTipAmountSheet = false
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(UNPColors.background)
+        .clipShape(RoundedRectangle(cornerRadius: UNPRadius.card, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: UNPRadius.card, style: .continuous)
+                .strokeBorder(UNPColors.accent.opacity(0.22), lineWidth: 1)
+        )
+    }
+}
+
+struct CommunityEventRoomView: View {
+    @EnvironmentObject private var store: UNPDataStore
+    @Environment(\.dismiss) private var dismiss
+    let event: UNPEvent
+    
+    @StateObject private var imageStore = UNPEventImageStore.shared
+    @State private var composedMessage = ""
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    
+    private var messages: [UNPCommunityMessage] { store.messages(for: event.id) }
+    private var eventImages: [UIImage] { imageStore.images(for: event.id) }
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text(event.venueName)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    
+                    eventGallery
+                    
+                    ForEach(messages) { message in
+                        CommunityMessageBubble(
+                            message: message,
+                            isCurrentUser: message.authorName == store.user.displayName
+                        )
                     }
+                }
+                .padding(16)
+            }
+            
+            composer
+                .padding(12)
+                .background(.ultraThinMaterial)
+        }
+        .navigationTitle(event.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Done") { dismiss() }
+            }
+        }
+        .onChange(of: selectedPhotoItem) { _, newItem in
+            guard let newItem else { return }
+            Task {
+                if let data = try? await newItem.loadTransferable(type: Data.self),
+                   let image = UIImage(data: data) {
+                    await MainActor.run {
+                        imageStore.add(image, to: event.id)
+                    }
+                }
+                await MainActor.run {
+                    selectedPhotoItem = nil
+                }
+            }
+        }
+    }
+    
+    private var eventGallery: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Group Images")
+                    .font(.headline)
+                Spacer()
+                PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                    Label("Add", systemImage: "photo.badge.plus")
+                        .font(.subheadline.weight(.semibold))
+                }
+            }
+            
+            if eventImages.isEmpty {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.secondary.opacity(0.15))
+                    .frame(height: 80)
+                    .overlay(Text("No images yet for this event").foregroundStyle(.secondary))
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(Array(eventImages.enumerated()), id: \.offset) { _, image in
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 90, height: 90)
+                                .clipped()
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    private var composer: some View {
+        HStack(spacing: 10) {
+            TextField("Share your experience...", text: $composedMessage)
+                .textFieldStyle(.roundedBorder)
+            
+            Button("Send") {
+                store.postCommunityMessage(
+                    eventId: event.id,
+                    authorName: store.user.displayName,
+                    text: composedMessage
                 )
+                composedMessage = ""
             }
+            .buttonStyle(.borderedProminent)
+            .disabled(composedMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
-        .alert("Insufficient Funds", isPresented: $showInsufficientFundsAlert) {
-            Button("Add Funds") {
-                // Navigate to profile to add funds
+    }
+}
+
+struct UNPEventCommunityRoomView: View {
+    let event: UNPEvent
+
+    var body: some View {
+        CommunityEventRoomView(event: event)
+    }
+}
+
+private struct CommunityMessageBubble: View {
+    let message: UNPCommunityMessage
+    let isCurrentUser: Bool
+    
+    var body: some View {
+        HStack {
+            if isCurrentUser { Spacer() }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(message.authorName)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text(message.text)
+                    .font(.body)
+                Text(timestampText)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text(insufficientFundsMessage)
-        }
-        .onAppear {
-            loadSocialPosts()
-            // Initialize user if needed
-            if userManager.currentUser == nil {
-                userManager.currentUser = sampleData.sampleUser
-            }
+            .padding(10)
+            .background(isCurrentUser ? Color.black.opacity(0.1) : Color.secondary.opacity(0.15))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            if !isCurrentUser { Spacer() }
         }
     }
     
-    private func loadSocialPosts() {
-        socialPosts = sampleData.sampleSocialPosts
-    }
-    
-    // MARK: - Interaction Handlers
-    
-    private func handleLike(for post: SocialPost) {
-        guard let index = socialPosts.firstIndex(where: { $0.id == post.id }),
-              var currentUser = userManager.currentUser else { return }
-        
-        let wasLiked = post.isLiked
-        
-        // Toggle like state on post
-        socialPosts[index].isLiked.toggle()
-        socialPosts[index].likes += wasLiked ? -1 : 1
-        
-        // Update user's liked posts
-        if wasLiked {
-            currentUser.likedPostIds.remove(post.id)
-        } else {
-            currentUser.likedPostIds.insert(post.id)
-        }
-        
-        userManager.updateUser(currentUser)
-    }
-    
-    private func handleRepost(for post: SocialPost) {
-        guard let index = socialPosts.firstIndex(where: { $0.id == post.id }) else { return }
-        
-        let wasSynced = post.isSynced
-        
-        // Toggle sync state
-        socialPosts[index].isSynced.toggle()
-        socialPosts[index].syncs += wasSynced ? -1 : 1
-        
-        // If reposting (not un-reposting), create a new repost
-        if !wasSynced {
-            let repost = SocialPost(
-                author: currentSocialUser,
-                content: post.content,
-                image: post.image,
-                tags: post.tags,
-                createdAt: Date(),
-                likes: 0,
-                comments: 0,
-                syncs: 0,
-                isLiked: false,
-                isSynced: false,
-                postType: post.postType,
-                commentsList: [],
-                repostedBy: currentSocialUser,
-                originalPostId: post.id
-            )
-            
-            // Insert repost at the beginning of the feed
-            socialPosts.insert(repost, at: 0)
-            
-            // Increment sync count on original post
-            socialPosts[index].syncs += 1
-        }
-    }
-    
-    // Helper function to find or create a drink from a post
-    private func findOrCreateDrinkFromPost(_ post: SocialPost) -> Drink {
-        // Try to match by image name first
-        if let imageName = post.image {
-            if let matchedDrink = sampleData.sampleDrinks.first(where: { $0.image.lowercased() == imageName.lowercased() }) {
-                return matchedDrink
-            }
-        }
-        
-        // Try to match by post content/tags (look for drink names)
-        let content = post.content.lowercased()
-        for drink in sampleData.sampleDrinks {
-            if content.contains(drink.name.lowercased()) {
-                return drink
-            }
-        }
-        
-        // Try to match by tags
-        for tag in post.tags {
-            let tagLower = tag.lowercased().replacingOccurrences(of: "#", with: "")
-            if let matchedDrink = sampleData.sampleDrinks.first(where: { drink in
-                drink.name.lowercased() == tagLower || drink.tags.contains(where: { $0.lowercased() == tagLower })
-            }) {
-                return matchedDrink
-            }
-        }
-        
-        // Default: return first drink from drinks category, or first available
-        return sampleData.sampleDrinks.first { $0.category == .drinks } ?? sampleData.sampleDrinks[0]
+    private var timestampText: String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        formatter.dateStyle = .none
+        return formatter.string(from: message.timestamp)
     }
 }
 
 #Preview {
     CommunityView()
+        .environmentObject(AppTheme.shared)
+        .environmentObject(UNPDataStore.shared)
+}
+
+final class UNPEventImageStore: ObservableObject {
+    static let shared = UNPEventImageStore()
+
+    @Published private var eventImages: [UUID: [UIImage]] = [:]
+
+    private init() {}
+
+    func images(for eventId: UUID) -> [UIImage] {
+        eventImages[eventId] ?? []
+    }
+
+    func add(_ image: UIImage, to eventId: UUID) {
+        var images = eventImages[eventId] ?? []
+        images.append(image)
+        eventImages[eventId] = images
+    }
 }

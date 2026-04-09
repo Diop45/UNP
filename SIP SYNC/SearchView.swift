@@ -10,6 +10,8 @@ import MapKit
 
 // MARK: - Search Result Types
 enum SearchResultType {
+    /// Recipes from the Pour tab (`UNPDataStore` beverages + ambassador uploads).
+    case pourRecipe(UNPBeverage)
     case drink(Drink)
     case venue(Location)
     case user(SocialUser)
@@ -22,6 +24,11 @@ struct SearchResult: Identifiable {
     let subtitle: String?
     let image: String?
     let icon: String
+    
+    var pourBeverage: UNPBeverage? {
+        if case .pourRecipe(let bev) = type { return bev }
+        return nil
+    }
     
     var drink: Drink? {
         if case .drink(let drink) = type { return drink }
@@ -41,17 +48,23 @@ struct SearchResult: Identifiable {
 
 // MARK: - Unified Search View
 struct UnifiedSearchView: View {
+    @EnvironmentObject private var unpStore: UNPDataStore
     @Binding var searchText: String
     @Binding var isPresented: Bool
     @State private var searchResults: [SearchResult] = []
     @State private var selectedDrink: Drink?
     @State private var selectedVenue: Location?
+    @State private var selectedPourBeverage: UNPBeverage?
     @State private var showDrinkDetail = false
     @State private var showVenueMap = false
     @Binding var cartItems: [OrderItem]
     @Binding var favoriteDrinks: [Drink]
     
     private let sampleData = SampleData.shared
+    
+    private var pourCatalog: [UNPBeverage] {
+        unpStore.beverages + unpStore.ambassadorUploads
+    }
     
     var body: some View {
         ZStack {
@@ -82,7 +95,7 @@ struct UnifiedSearchView: View {
                     
                     HStack(spacing: 8) {
                         Image(systemName: "magnifyingglass").foregroundColor(.gray)
-                        TextField("Search drinks, venues, users...", text: $searchText)
+                        TextField("Search Pour recipes, menu drinks, venues…", text: $searchText)
                             .foregroundColor(.white)
                             .submitLabel(.search)
                             .autocapitalization(.none)
@@ -123,8 +136,9 @@ struct UnifiedSearchView: View {
                 
                 // Search Results
                 if searchText.isEmpty {
-                    // Show recent searches or categories
-                    RecentSearchesView()
+                    RecentSearchesView(
+                        pourDrinkNames: Array(pourCatalog.prefix(8).map(\.name))
+                    )
                 } else if searchResults.isEmpty {
                     // No results
                     VStack(spacing: 16) {
@@ -134,7 +148,7 @@ struct UnifiedSearchView: View {
                         Text("No results found")
                             .font(.headline)
                             .foregroundColor(.white)
-                        Text("Try searching for drinks, venues, or users")
+                        Text("Try a Pour recipe name, spirit, or venue")
                             .font(.subheadline)
                             .foregroundColor(.gray)
                             .multilineTextAlignment(.center)
@@ -145,11 +159,18 @@ struct UnifiedSearchView: View {
                     // Show results
                     ScrollView {
                         LazyVStack(spacing: 0) {
-                            // Group results by type
+                            if let pourResults = groupedResults["pour"], !pourResults.isEmpty {
+                                SearchResultsSection(
+                                    title: "Pour",
+                                    icon: "wineglass.fill",
+                                    results: pourResults,
+                                    onTap: handleResultTap
+                                )
+                            }
                             if let drinkResults = groupedResults["drink"], !drinkResults.isEmpty {
                                 SearchResultsSection(
-                                    title: "Drinks",
-                                    icon: "wineglass.fill",
+                                    title: "Menu drinks",
+                                    icon: "cup.and.saucer.fill",
                                     results: drinkResults,
                                     onTap: handleResultTap
                                 )
@@ -181,6 +202,14 @@ struct UnifiedSearchView: View {
         .onChange(of: searchText) { newValue in
             performSearch(query: newValue)
         }
+        .sheet(item: $selectedPourBeverage) { bev in
+            UNPBeverageDetailSheet(
+                beverage: bev,
+                tier: unpStore.user.accessTier,
+                isAmbassadorOwned: unpStore.ambassadorUploads.contains(where: { $0.id == bev.id })
+            )
+            .environmentObject(unpStore)
+        }
         .fullScreenCover(isPresented: $showDrinkDetail) {
             if let drink = selectedDrink {
                 NavigationView {
@@ -201,6 +230,7 @@ struct UnifiedSearchView: View {
         for result in searchResults {
             let key: String
             switch result.type {
+            case .pourRecipe: key = "pour"
             case .drink: key = "drink"
             case .venue: key = "venue"
             case .user: key = "user"
@@ -224,7 +254,18 @@ struct UnifiedSearchView: View {
         let queryLower = query.lowercased().trimmingCharacters(in: .whitespaces)
         var results: [SearchResult] = []
         
-        // Search Drinks
+        // Pour recipes (same catalog & fields as `UNPPourJourneyView`)
+        for bev in pourCatalog where pourBeverageMatches(bev, queryLower: queryLower) {
+            results.append(SearchResult(
+                type: .pourRecipe(bev),
+                title: bev.name,
+                subtitle: bev.shortDescription,
+                image: nil,
+                icon: bev.imageSymbolName
+            ))
+        }
+        
+        // Menu / order drinks (legacy catalog)
         for drink in sampleData.sampleDrinks {
             if drink.name.lowercased().contains(queryLower) ||
                drink.bio.lowercased().contains(queryLower) ||
@@ -269,8 +310,11 @@ struct UnifiedSearchView: View {
             }
         }
         
-        // Sort results by relevance (exact matches first, then partial)
         searchResults = results.sorted { result1, result2 in
+            let rank1 = searchResultKindRank(result1)
+            let rank2 = searchResultKindRank(result2)
+            if rank1 != rank2 { return rank1 < rank2 }
+            
             let title1 = result1.title.lowercased()
             let title2 = result2.title.lowercased()
             
@@ -292,8 +336,32 @@ struct UnifiedSearchView: View {
         }
     }
     
+    private func pourBeverageMatches(_ bev: UNPBeverage, queryLower: String) -> Bool {
+        guard !queryLower.isEmpty else { return true }
+        if bev.name.lowercased().contains(queryLower) { return true }
+        if bev.shortDescription.lowercased().contains(queryLower) { return true }
+        let ingredientsText = bev.ingredients.joined(separator: " ").lowercased()
+        if ingredientsText.contains(queryLower) { return true }
+        if bev.pairingNotes.lowercased().contains(queryLower) { return true }
+        if bev.fullRecipe.lowercased().contains(queryLower) { return true }
+        return false
+    }
+    
+    /// Pour recipes first, then menu drinks, venues, users.
+    private func searchResultKindRank(_ result: SearchResult) -> Int {
+        switch result.type {
+        case .pourRecipe: return 0
+        case .drink: return 1
+        case .venue: return 2
+        case .user: return 3
+        }
+    }
+    
     private func handleResultTap(_ result: SearchResult) {
         switch result.type {
+        case .pourRecipe(let bev):
+            selectedPourBeverage = bev
+            
         case .drink(let drink):
             selectedDrink = drink
             showDrinkDetail = true
@@ -387,7 +455,7 @@ struct SearchResultRow: View {
                                     LinearGradient(
                                         gradient: Gradient(colors: [
                                             Color.yellow.opacity(0.3),
-                                            Color.orange.opacity(0.3)
+                                            UNPColors.creamMuted(0.3)
                                         ]),
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
@@ -437,6 +505,15 @@ struct SearchResultRow: View {
 
 // MARK: - Recent Searches View
 struct RecentSearchesView: View {
+    /// Names from `UNPDataStore` Pour catalog; falls back when empty.
+    var pourDrinkNames: [String] = []
+    
+    private var pourSuggestions: [String] {
+        let trimmed = pourDrinkNames.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        if !trimmed.isEmpty { return trimmed }
+        return ["Negroni", "Martini", "Scotch", "Spritzer"]
+    }
+    
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -447,14 +524,14 @@ struct RecentSearchesView: View {
                     .padding(.top, 20)
                 
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Popular Drinks")
+                    Text("Popular in Pour")
                         .font(.subheadline)
                         .foregroundColor(.gray)
                         .padding(.horizontal, 20)
                     
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 12) {
-                            ForEach(["Negroni", "Martini", "Scotch", "Spritzer"], id: \.self) { drink in
+                            ForEach(pourSuggestions, id: \.self) { drink in
                                 SuggestionChip(title: drink, icon: "wineglass.fill")
                             }
                         }
@@ -540,7 +617,7 @@ struct VenueMapView: View {
                                     .frame(width: 32, height: 32)
                                 
                                 Image(systemName: loc.locationType == .bartender ? "person.crop.circle.fill" : "building.2.fill")
-                                    .foregroundColor(loc.locationType == .bartender ? .yellow : .orange)
+                                    .foregroundColor(loc.locationType == .bartender ? .yellow : UNPColors.creamMuted())
                                     .font(.title2)
                             }
                             .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 2)
@@ -596,5 +673,6 @@ struct VenueMapView: View {
         cartItems: .constant([]),
         favoriteDrinks: .constant([])
     )
+    .environmentObject(UNPDataStore.shared)
 }
 

@@ -132,7 +132,7 @@ struct OrderStatusCard: View {
     var statusColor: Color {
         switch order.status {
         case .pending, .confirmed: return .yellow
-        case .preparing: return .orange
+        case .preparing: return UNPColors.creamMuted()
         case .ready: return .green
         case .delivered: return .blue
         }

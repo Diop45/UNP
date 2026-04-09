@@ -11,11 +11,7 @@ struct BartenderClassesView: View {
     @Environment(\.presentationMode) var presentationMode
     @Binding var cartItems: [OrderItem]
     @State private var selectedClass: BartenderClass?
-    @StateObject private var tipJarManager = TipJarManager.shared
     @State private var showSubscriptionPayment = false
-    @State private var showInsufficientFundsAlert = false
-    @State private var insufficientFundsMessage = ""
-    @State private var showAddFundsSheet = false
     
     private let sampleData = SampleData.shared
     private let subscriptionPrice: Double = 9.99 // Monthly subscription price
@@ -28,40 +24,29 @@ struct BartenderClassesView: View {
     
     var body: some View {
         ZStack {
-            // Dark purple background
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color(red: 0.15, green: 0.1, blue: 0.25),
-                    Color(red: 0.1, green: 0.05, blue: 0.2)
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            UNPColors.background.ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Navigation Bar
                 HStack {
-                    Button(action: {
+                    Button {
                         presentationMode.wrappedValue.dismiss()
-                    }) {
-                        Image(systemName: "arrow.left")
-                            .foregroundColor(.white)
-                            .font(.title3)
-                            .padding(8)
-                            .background(Color.black.opacity(0.3))
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(UNPColors.cream)
+                            .frame(width: 40, height: 40)
+                            .background(UNPColors.cardSurface)
                             .clipShape(Circle())
                     }
                     
                     Spacer()
                     
-                    Text("SipSync Originals")
-                        .font(.headline)
-                        .foregroundColor(.white)
+                    Text("UNP Originals")
+                        .font(.unpDisplay(17, weight: .semibold))
+                        .foregroundStyle(UNPColors.cream)
                     
                     Spacer()
                     
-                    // Placeholder for balance
                     Color.clear
                         .frame(width: 40, height: 40)
                 }
@@ -88,44 +73,29 @@ struct BartenderClassesView: View {
                 
                 Spacer()
                 
-                // Bottom Section
                 VStack(spacing: 20) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Get the party started with Classes")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
+                            .font(.unpDisplay(22, weight: .bold))
+                            .foregroundStyle(UNPColors.cream)
                         
-                        Text("An SipSync Premium subscription is required to unlock classes.")
-                            .font(.subheadline)
-                            .foregroundColor(.white.opacity(0.8))
+                        Text("An UNP Premium subscription is required to unlock classes.")
+                            .font(.unpBody(15))
+                            .foregroundStyle(UNPColors.creamMuted(0.72))
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 20)
                     
-                    Button(action: {
-                        // Process subscription payment from tip jar
-                        let result = tipJarManager.processSubscriptionPayment(amount: subscriptionPrice, subscriptionType: "Premium Monthly")
-                        
-                        if result.isSuccess {
-                            // Subscription activated (in production, this would be handled by backend)
-                            showSubscriptionPayment = false
-                        } else {
-                            // Show insufficient funds alert
-                            if let errorMessage = result.errorMessage {
-                                insufficientFundsMessage = errorMessage
-                                showInsufficientFundsAlert = true
-                            }
-                        }
-                    }) {
+                    Button {
+                        showSubscriptionPayment = false
+                    } label: {
                         Text("Subscribe - $\(String(format: "%.2f", subscriptionPrice))/month")
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.black)
+                            .font(.unpDisplay(17, weight: .semibold))
+                            .foregroundStyle(UNPColors.background)
                             .frame(maxWidth: .infinity)
                             .frame(height: 56)
-                            .background(Color.white)
-                            .cornerRadius(28)
+                            .background(UNPColors.cream)
+                            .clipShape(Capsule())
                     }
                     .padding(.horizontal, 20)
                 }
@@ -134,17 +104,6 @@ struct BartenderClassesView: View {
         }
         .sheet(item: $selectedClass) { classItem in
             ClassDetailView(classItem: classItem, cartItems: $cartItems)
-        }
-        .alert("Insufficient Funds", isPresented: $showInsufficientFundsAlert) {
-            Button("Add Funds") {
-                showAddFundsSheet = true
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text(insufficientFundsMessage)
-        }
-        .sheet(isPresented: $showAddFundsSheet) {
-            AddFundsToTipJarSheet()
         }
     }
 }
@@ -186,103 +145,83 @@ struct BartenderClassCard: View {
     var body: some View {
         Button(action: onTap) {
             ZStack(alignment: .bottomLeading) {
-                // Class Image - use unique image for each class
                 Image(classCardImage)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
                     .frame(width: 300, height: 400)
                     .clipped()
-                    .cornerRadius(16)
+                    .clipShape(RoundedRectangle(cornerRadius: UNPRadius.card, style: .continuous))
                 
-                // Gradient Overlay at Bottom
                 LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color.clear,
-                        Color.black.opacity(0.3),
-                        Color.black.opacity(0.7)
-                    ]),
+                    colors: [
+                        .clear,
+                        UNPColors.background.opacity(0.35),
+                        UNPColors.background.opacity(0.88)
+                    ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .cornerRadius(16)
-                .frame(height: 400)
+                .frame(width: 300, height: 400)
+                .clipShape(RoundedRectangle(cornerRadius: UNPRadius.card, style: .continuous))
                 
-                // Top Elements
                 VStack {
                     HStack {
-                        // "Going" Badge
                         if classItem.isGoing {
                             Text("Going")
-                                .font(.caption)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.black)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(UNPColors.background)
                                 .padding(.horizontal, 10)
-                                .padding(.vertical, 4)
+                                .padding(.vertical, 5)
                                 .background(Color(red: 0.7, green: 0.9, blue: 0.7))
-                                .cornerRadius(8)
+                                .clipShape(Capsule())
                         }
                         
                         Spacer()
                         
-                        // Lock Icon (if locked)
                         if classItem.isLocked {
                             Image(systemName: "lock.fill")
-                                .foregroundColor(.white)
+                                .foregroundStyle(UNPColors.cream)
                                 .font(.title3)
                                 .padding(10)
-                                .background(Color.black.opacity(0.5))
+                                .background(UNPColors.cardSurface.opacity(0.92))
                                 .clipShape(Circle())
                         }
                     }
-                    .padding(12)
+                    .padding(14)
                     
                     Spacer()
                 }
                 
-                // Bottom Info Overlay
                 VStack(alignment: .leading, spacing: 6) {
-                    // Attendee Profile Icons (above title)
                     if !classItem.attendees.isEmpty {
                         HStack(spacing: -6) {
                             ForEach(Array(classItem.attendees.prefix(3)), id: \.id) { attendee in
                                 Circle()
-                                    .fill(
-                                        LinearGradient(
-                                            gradient: Gradient(colors: [
-                                                Color.purple.opacity(0.9),
-                                                Color.blue.opacity(0.9)
-                                            ]),
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
+                                    .fill(UNPColors.tabBarSelected.opacity(0.85))
                                     .frame(width: 28, height: 28)
                                     .overlay(
                                         Text(String(attendee.name.prefix(1)))
-                                            .font(.caption2)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.white)
+                                            .font(.caption2.weight(.bold))
+                                            .foregroundStyle(UNPColors.cream)
                                     )
                                     .overlay(
                                         Circle()
-                                            .stroke(Color.white, lineWidth: 2)
+                                            .stroke(UNPColors.cream, lineWidth: 2)
                                     )
                             }
                             
-                            // Additional attendees count
                             if classItem.attendees.count > 3 {
                                 Circle()
-                                    .fill(Color.white.opacity(0.9))
+                                    .fill(UNPColors.cardSurface)
                                     .frame(width: 28, height: 28)
                                     .overlay(
                                         Text("+\(classItem.attendees.count - 3)")
-                                            .font(.caption2)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.black)
+                                            .font(.caption2.weight(.bold))
+                                            .foregroundStyle(UNPColors.cream)
                                     )
                                     .overlay(
                                         Circle()
-                                            .stroke(Color.white, lineWidth: 2)
+                                            .stroke(UNPColors.cream, lineWidth: 2)
                                     )
                             }
                         }
@@ -290,26 +229,30 @@ struct BartenderClassCard: View {
                     }
                     
                     Text(classItem.title)
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
+                        .font(.unpDisplay(22, weight: .bold))
+                        .foregroundStyle(UNPColors.cream)
                         .lineLimit(2)
                     
                     Text("\(dateFormatter.string(from: classItem.date)), \(classItem.time)")
-                        .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.9))
+                        .font(.unpBody(15))
+                        .foregroundStyle(UNPColors.creamMuted(0.88))
                     
                     Text(classItem.location)
-                        .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.8))
+                        .font(.unpBody(15))
+                        .foregroundStyle(UNPColors.creamMuted(0.72))
                 }
                 .frame(width: 300, alignment: .leading)
                 .padding(16)
             }
             .frame(width: 300, height: 400)
-            .cornerRadius(16)
-            .shadow(color: Color.black.opacity(0.4), radius: 12, x: 0, y: 6)
+            .clipShape(RoundedRectangle(cornerRadius: UNPRadius.card, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: UNPRadius.card, style: .continuous)
+                    .stroke(UNPColors.creamMuted(0.12), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.35), radius: 14, x: 0, y: 8)
         }
+        .buttonStyle(.plain)
     }
 }
 
@@ -318,10 +261,6 @@ struct ClassDetailView: View {
     let classItem: BartenderClass
     @Binding var cartItems: [OrderItem]
     @Environment(\.presentationMode) var presentationMode
-    @StateObject private var tipJarManager = TipJarManager.shared
-    @State private var showInsufficientFundsAlert = false
-    @State private var insufficientFundsMessage = ""
-    @State private var showAddFundsSheet = false
     
     private let sampleData = SampleData.shared
     
@@ -331,31 +270,25 @@ struct ClassDetailView: View {
         return formatter
     }
     
+    private var bartenderProfileImage: String? {
+        sampleData.sampleBartenderProfiles.first { $0.author.id == classItem.bartender.id }?.profileImage
+    }
+    
     var body: some View {
         ZStack {
-            // Dark purple background
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color(red: 0.15, green: 0.1, blue: 0.25),
-                    Color(red: 0.1, green: 0.05, blue: 0.2)
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            UNPColors.background.ignoresSafeArea()
             
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    // Back Button
                     HStack {
-                        Button(action: {
+                        Button {
                             presentationMode.wrappedValue.dismiss()
-                        }) {
-                            Image(systemName: "arrow.left")
-                                .foregroundColor(.white)
-                                .font(.title3)
-                                .padding(8)
-                                .background(Color.black.opacity(0.3))
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.headline.weight(.semibold))
+                                .foregroundStyle(UNPColors.cream)
+                                .frame(width: 40, height: 40)
+                                .background(UNPColors.cardSurface)
                                 .clipShape(Circle())
                         }
                         Spacer()
@@ -390,17 +323,17 @@ struct ClassDetailView: View {
                             .aspectRatio(contentMode: .fill)
                             .frame(height: 300)
                             .clipped()
-                            .cornerRadius(20)
+                            .clipShape(RoundedRectangle(cornerRadius: UNPRadius.card, style: .continuous))
                         
                         if classItem.isLocked {
                             VStack {
                                 HStack {
                                     Spacer()
                                     Image(systemName: "lock.fill")
-                                        .foregroundColor(.white)
-                                        .font(.title)
-                                        .padding(16)
-                                        .background(Color.black.opacity(0.6))
+                                        .foregroundStyle(UNPColors.cream)
+                                        .font(.title2)
+                                        .padding(14)
+                                        .background(UNPColors.cardSurface.opacity(0.92))
                                         .clipShape(Circle())
                                         .padding(16)
                                 }
@@ -410,104 +343,88 @@ struct ClassDetailView: View {
                     }
                     .padding(.horizontal, 20)
                     
-                    // Class Details
                     VStack(alignment: .leading, spacing: 16) {
                         Text(classItem.title)
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
+                            .font(.unpDisplay(28, weight: .bold))
+                            .foregroundStyle(UNPColors.cream)
                         
-                        // Bartender Info
                         HStack(spacing: 12) {
-                            Circle()
-                                .fill(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [
-                                            Color.yellow.opacity(0.5),
-                                            Color.orange.opacity(0.5)
-                                        ]),
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .frame(width: 50, height: 50)
-                                .overlay(
-                                    Text(String(classItem.bartender.name.prefix(1)))
-                                        .font(.title3)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.white)
-                                )
+                            Group {
+                                if let img = bartenderProfileImage {
+                                    Image(img)
+                                        .resizable()
+                                        .scaledToFill()
+                                } else {
+                                    Circle()
+                                        .fill(UNPColors.cardSurface)
+                                        .overlay(
+                                            Text(String(classItem.bartender.name.prefix(1)))
+                                                .font(.title3.weight(.bold))
+                                                .foregroundStyle(UNPColors.cream)
+                                        )
+                                }
+                            }
+                            .frame(width: 50, height: 50)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(UNPColors.creamMuted(0.2), lineWidth: 1))
                             
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(classItem.bartender.name)
-                                    .font(.headline)
-                                    .foregroundColor(.white)
+                                    .font(.unpDisplay(17, weight: .semibold))
+                                    .foregroundStyle(UNPColors.cream)
                                 if let location = classItem.bartender.location {
                                     Text(location)
-                                        .font(.subheadline)
-                                        .foregroundColor(.white.opacity(0.7))
+                                        .font(.unpBody(15))
+                                        .foregroundStyle(UNPColors.creamMuted(0.72))
                                 }
                             }
                             
                             Spacer()
                         }
                         
-                        // Date and Time
                         HStack(spacing: 12) {
                             Image(systemName: "calendar")
-                                .foregroundColor(.yellow)
+                                .foregroundStyle(UNPColors.accent)
                             Text(dateFormatter.string(from: classItem.date) + ", \(classItem.time)")
-                                .foregroundColor(.white)
+                                .foregroundStyle(UNPColors.creamMuted(0.88))
                         }
-                        .font(.subheadline)
+                        .font(.unpBody(15))
                         
-                        // Location
                         HStack(spacing: 12) {
                             Image(systemName: "location")
-                                .foregroundColor(.yellow)
+                                .foregroundStyle(UNPColors.accent)
                             Text(classItem.location)
-                                .foregroundColor(.white)
+                                .foregroundStyle(UNPColors.creamMuted(0.88))
                         }
-                        .font(.subheadline)
+                        .font(.unpBody(15))
                         
-                        // Description
                         Text(classItem.description)
-                            .font(.body)
-                            .foregroundColor(.white.opacity(0.9))
+                            .font(.unpBody(16))
+                            .foregroundStyle(UNPColors.creamMuted(0.85))
                             .lineSpacing(4)
                             .padding(.top, 8)
                         
-                        // Attendees
                         if !classItem.attendees.isEmpty {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("Attendees")
-                                    .font(.headline)
-                                    .foregroundColor(.white)
+                                    .font(.unpDisplay(17, weight: .semibold))
+                                    .foregroundStyle(UNPColors.cream)
                                 
                                 HStack(spacing: 12) {
                                     ForEach(classItem.attendees, id: \.id) { attendee in
                                         VStack(spacing: 4) {
                                             Circle()
-                                                .fill(
-                                                    LinearGradient(
-                                                        gradient: Gradient(colors: [
-                                                            Color.yellow.opacity(0.5),
-                                                            Color.orange.opacity(0.5)
-                                                        ]),
-                                                        startPoint: .topLeading,
-                                                        endPoint: .bottomTrailing
-                                                    )
-                                                )
+                                                .fill(UNPColors.tabBarSelected.opacity(0.75))
                                                 .frame(width: 50, height: 50)
                                                 .overlay(
                                                     Text(String(attendee.name.prefix(1)))
-                                                        .font(.headline)
-                                                        .foregroundColor(.white)
+                                                        .font(.headline.weight(.bold))
+                                                        .foregroundStyle(UNPColors.cream)
                                                 )
                                             
                                             Text(attendee.name.components(separatedBy: " ").first ?? "")
-                                                .font(.caption)
-                                                .foregroundColor(.white.opacity(0.8))
+                                                .font(.unpBody(12))
+                                                .foregroundStyle(UNPColors.creamMuted(0.72))
                                         }
                                     }
                                 }
@@ -521,61 +438,30 @@ struct ClassDetailView: View {
                 }
             }
             
-            // Bottom Action Button
             if classItem.isLocked {
                 VStack {
                     Spacer()
-                    Button(action: {
-                        // Process class payment from tip jar
-                        if let price = classItem.price {
-                            let result = tipJarManager.processClassPayment(amount: price, classId: classItem.id)
-                            
-                            if result.isSuccess {
-                                // Unlock the class (in production, this would be handled by backend)
-                                // For now, we'll just show success
-                                presentationMode.wrappedValue.dismiss()
-                            } else {
-                                // Show insufficient funds alert
-                                if let errorMessage = result.errorMessage {
-                                    insufficientFundsMessage = errorMessage
-                                    showInsufficientFundsAlert = true
-                                }
-                            }
-                        }
-                    }) {
-                        HStack {
+                    Button {
+                        presentationMode.wrappedValue.dismiss()
+                    } label: {
+                        Group {
                             if let price = classItem.price {
                                 Text("Unlock Class - $\(Int(price))")
-                                    .font(.headline)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.black)
                             } else {
                                 Text("Unlock Class")
-                                    .font(.headline)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.black)
                             }
                         }
+                        .font(.unpDisplay(17, weight: .semibold))
+                        .foregroundStyle(UNPColors.background)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
-                        .background(Color.yellow)
-                        .cornerRadius(28)
+                        .background(UNPColors.cream)
+                        .clipShape(Capsule())
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 34)
                 }
             }
-        }
-        .alert("Insufficient Funds", isPresented: $showInsufficientFundsAlert) {
-            Button("Add Funds") {
-                showAddFundsSheet = true
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text(insufficientFundsMessage)
-        }
-        .sheet(isPresented: $showAddFundsSheet) {
-            AddFundsToTipJarSheet()
         }
     }
 }

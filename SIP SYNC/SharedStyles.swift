@@ -7,17 +7,19 @@
 
 import SwiftUI
 
-// MARK: - Custom Text Field Style
+// MARK: - Custom Text Field Style (theme-aware)
 struct CustomTextFieldStyle: TextFieldStyle {
+    @EnvironmentObject var theme: AppTheme
+    
     func _body(configuration: TextField<Self._Label>) -> some View {
         configuration
             .padding()
-            .background(Color.black.opacity(0.3))
+            .background(theme.inputBackground)
             .cornerRadius(12)
-            .foregroundColor(.white)
+            .foregroundColor(theme.textPrimary)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.gray.opacity(0.5), lineWidth: 1)
+                    .stroke(theme.borderColor, lineWidth: 1)
             )
     }
 }

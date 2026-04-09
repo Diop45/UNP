@@ -7,6 +7,7 @@
 
 import SwiftUI
 import PhotosUI
+import UIKit
 
 // MARK: - Onboarding Data Model
 struct OnboardingData {
@@ -34,102 +35,123 @@ struct OnboardingView: View {
     var initialName: String = ""
     var initialEmail: String = ""
     var initialUserType: UserType = .consumer
+    private static let onboardingBackgroundImageName = "LoginSplash"
     
-    init(name: String = "", email: String = "", userType: UserType = .consumer) {
+    /// When set (UNP first-run), finishing onboarding calls this instead of showing `MainTabView`.
+    private let unpFirstRunCompletion: (() -> Void)?
+    
+    init(
+        name: String = "",
+        email: String = "",
+        userType: UserType = .consumer,
+        unpFirstRunCompletion: (() -> Void)? = nil
+    ) {
         self.initialName = name
         self.initialEmail = email
         self.initialUserType = userType
+        self.unpFirstRunCompletion = unpFirstRunCompletion
     }
     
     var body: some View {
-        if showMainApp {
-            ContentView()
+        if showMainApp && unpFirstRunCompletion == nil {
+            MainTabView()
+                .environmentObject(AppTheme.shared)
+                .environmentObject(UNPDataStore.shared)
         } else {
             ZStack {
-                // Dark purple background
+                onboardingBackground
+                    .ignoresSafeArea()
+
+                // Keep text legible over the photo background.
                 LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color(red: 0.15, green: 0.1, blue: 0.25),
-                        Color(red: 0.1, green: 0.05, blue: 0.2)
-                    ]),
+                    colors: [
+                        Color.black.opacity(0.45),
+                        Color.black.opacity(0.2),
+                        Color.black.opacity(0.45)
+                    ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
                 .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
+                    HStack {
+                        if currentStep > 0 {
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.25)) {
+                                    currentStep -= 1
+                                }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "chevron.left")
+                                    Text("Back")
+                                }
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundColor(.yellow)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    
                     // Progress indicator
                     ProgressBar(currentStep: currentStep, totalSteps: totalSteps)
                         .padding(.horizontal, 20)
-                        .padding(.top, 60)
+                        .padding(.top, 12)
                     
-                    TabView(selection: $currentStep) {
-                        // Step 1: Profile Photo
-                        ProfilePhotoStep(
-                            profileImage: $onboardingData.profileImage,
-                            selectedPhoto: $selectedPhoto
-                        ) {
-                            withAnimation {
-                                currentStep = 1
+                    // TabView + .disabled(true) blocked all taps (PhotosPicker, fields, buttons).
+                    // Single-step container keeps button-only navigation without disabling children.
+                    Group {
+                        switch currentStep {
+                        case 0:
+                            ProfilePhotoStep(
+                                profileImage: $onboardingData.profileImage,
+                                selectedPhoto: $selectedPhoto
+                            ) {
+                                withAnimation(.easeInOut(duration: 0.25)) { currentStep = 1 }
                             }
-                        }
-                        .tag(0)
-                        
-                        // Step 2: Basic Info (Name, Location)
-                        BasicInfoStep(
-                            name: $onboardingData.name,
-                            location: $onboardingData.location
-                        ) {
-                            withAnimation {
-                                currentStep = 2
+                        case 1:
+                            BasicInfoStep(
+                                name: $onboardingData.name,
+                                location: $onboardingData.location
+                            ) {
+                                withAnimation(.easeInOut(duration: 0.25)) { currentStep = 2 }
                             }
-                        }
-                        .tag(1)
-                        
-                        // Step 3: Bio & Profession
-                        BioProfessionStep(
-                            bio: $onboardingData.bio,
-                            profession: $onboardingData.profession,
-                            userType: onboardingData.userType
-                        ) {
-                            withAnimation {
-                                currentStep = 3
+                        case 2:
+                            BioProfessionStep(
+                                bio: $onboardingData.bio,
+                                profession: $onboardingData.profession,
+                                userType: onboardingData.userType
+                            ) {
+                                withAnimation(.easeInOut(duration: 0.25)) { currentStep = 3 }
                             }
-                        }
-                        .tag(2)
-                        
-                        // Step 4: Languages
-                        LanguagesStep(
-                            languages: $onboardingData.languages
-                        ) {
-                            withAnimation {
-                                currentStep = 4
+                        case 3:
+                            LanguagesStep(
+                                languages: $onboardingData.languages
+                            ) {
+                                withAnimation(.easeInOut(duration: 0.25)) { currentStep = 4 }
                             }
-                        }
-                        .tag(3)
-                        
-                        // Step 5: Interests
-                        InterestsStep(
-                            interests: $onboardingData.interests
-                        ) {
-                            withAnimation {
-                                currentStep = 5
+                        case 4:
+                            InterestsStep(
+                                interests: $onboardingData.interests
+                            ) {
+                                withAnimation(.easeInOut(duration: 0.25)) { currentStep = 5 }
                             }
+                        case 5:
+                            SocialMediaStep(
+                                instagramHandle: $onboardingData.instagramHandle,
+                                twitterHandle: $onboardingData.twitterHandle
+                            ) {
+                                completeOnboarding()
+                            }
+                        default:
+                            EmptyView()
                         }
-                        .tag(4)
-                        
-                        // Step 6: Social Media (Optional)
-                        SocialMediaStep(
-                            instagramHandle: $onboardingData.instagramHandle,
-                            twitterHandle: $onboardingData.twitterHandle
-                        ) {
-                            // Complete onboarding
-                            completeOnboarding()
-                        }
-                        .tag(5)
                     }
-                    .tabViewStyle(.page(indexDisplayMode: .never))
-                    .disabled(true) // Disable swipe, use buttons only
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .animation(.easeInOut(duration: 0.2), value: currentStep)
                 }
             }
             .onAppear {
@@ -137,14 +159,33 @@ struct OnboardingView: View {
                 onboardingData.email = initialEmail
                 onboardingData.userType = initialUserType
             }
-            .onChange(of: selectedPhoto) { newItem in
-                Task {
-                    if let data = try? await newItem?.loadTransferable(type: Data.self),
+            .onChange(of: selectedPhoto) { _, newItem in
+                Task { @MainActor in
+                    guard let newItem else { return }
+                    if let data = try? await newItem.loadTransferable(type: Data.self),
                        let image = UIImage(data: data) {
                         onboardingData.profileImage = image
                     }
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var onboardingBackground: some View {
+        if UIImage(named: Self.onboardingBackgroundImageName) != nil {
+            Image(Self.onboardingBackgroundImageName)
+                .resizable()
+                .scaledToFill()
+        } else {
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color(red: 0.15, green: 0.1, blue: 0.25),
+                    Color(red: 0.1, green: 0.05, blue: 0.2)
+                ]),
+                startPoint: .top,
+                endPoint: .bottom
+            )
         }
     }
     
@@ -157,8 +198,11 @@ struct OnboardingView: View {
         let user = UserManager.shared.createUser(from: onboardingData)
         UserManager.shared.updateUser(user)
         
-        // Navigate to main app
-        showMainApp = true
+        if let finish = unpFirstRunCompletion {
+            finish()
+        } else {
+            showMainApp = true
+        }
     }
 }
 
@@ -215,7 +259,7 @@ struct ProfilePhotoStep: View {
                                 LinearGradient(
                                     gradient: Gradient(colors: [
                                         Color.yellow.opacity(0.3),
-                                        Color.orange.opacity(0.3)
+                                        UNPColors.creamMuted(0.3)
                                     ]),
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
@@ -236,11 +280,10 @@ struct ProfilePhotoStep: View {
                 )
                 .shadow(color: Color.black.opacity(0.3), radius: 10, x: 0, y: 5)
             }
+            .buttonStyle(.plain)
             
             if profileImage == nil {
-                Button(action: {
-                    // Photo picker will handle selection
-                }) {
+                PhotosPicker(selection: $selectedPhoto, matching: .images) {
                     Text("Choose Photo")
                         .font(.headline)
                         .foregroundColor(.white)
@@ -249,6 +292,7 @@ struct ProfilePhotoStep: View {
                         .background(Color.yellow.opacity(0.2))
                         .cornerRadius(20)
                 }
+                .buttonStyle(.plain)
             }
             
             Spacer()
@@ -262,7 +306,7 @@ struct ProfilePhotoStep: View {
                     .frame(height: 56)
                     .background(
                         LinearGradient(
-                            gradient: Gradient(colors: [Color.yellow, Color.orange]),
+                            gradient: Gradient(colors: [Color.yellow, UNPColors.creamMuted()]),
                             startPoint: .leading,
                             endPoint: .trailing
                         )
@@ -332,7 +376,7 @@ struct BasicInfoStep: View {
                     .background(
                         !name.isEmpty && !location.isEmpty
                             ? LinearGradient(
-                                gradient: Gradient(colors: [Color.yellow, Color.orange]),
+                                gradient: Gradient(colors: [Color.yellow, UNPColors.creamMuted()]),
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
@@ -426,6 +470,11 @@ struct BioProfessionStep: View {
                                     .stroke(Color.yellow.opacity(0.3), lineWidth: 1)
                             )
                             .scrollContentBackground(.hidden)
+                            .onChange(of: bio) { _, newValue in
+                                if newValue.count > 200 {
+                                    bio = String(newValue.prefix(200))
+                                }
+                            }
                         
                         Text("\(bio.count) / 200")
                             .font(.caption)
@@ -447,7 +496,7 @@ struct BioProfessionStep: View {
                         .frame(height: 56)
                         .background(
                             LinearGradient(
-                                gradient: Gradient(colors: [Color.yellow, Color.orange]),
+                                gradient: Gradient(colors: [Color.yellow, UNPColors.creamMuted()]),
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
@@ -524,7 +573,7 @@ struct LanguagesStep: View {
                         .frame(height: 56)
                         .background(
                             LinearGradient(
-                                gradient: Gradient(colors: [Color.yellow, Color.orange]),
+                                gradient: Gradient(colors: [Color.yellow, UNPColors.creamMuted()]),
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
@@ -562,6 +611,7 @@ struct LanguageTag: View {
                         .stroke(isSelected ? Color.yellow : Color.clear, lineWidth: 2)
                 )
         }
+        .buttonStyle(.plain)
     }
 }
 
@@ -602,7 +652,7 @@ struct InterestsStep: View {
                 
                 // Spirits Section
                 interestSection(title: "Spirits", items: [
-                    (.whiskey, "takeoutbag.and.cup.and.straw", Color.orange),
+                    (.whiskey, "takeoutbag.and.cup.and.straw", UNPColors.creamMuted()),
                     (.bourbon, "flame", Color.red),
                     (.scotch, "drop", Color.blue),
                     (.gin, "leaf", Color.green),
@@ -615,7 +665,7 @@ struct InterestsStep: View {
                 interestSection(title: "Cocktails", items: [
                     (.negroni, "wineglass", Color.red),
                     (.martini, "martini.glass", Color.blue),
-                    (.oldFashioned, "cube", Color.orange),
+                    (.oldFashioned, "cube", UNPColors.creamMuted()),
                     (.spritz, "sparkles", Color.yellow),
                     (.margarita, "tortilla", Color.green),
                     (.manhattan, "building.2", Color.purple)
@@ -626,7 +676,7 @@ struct InterestsStep: View {
                     (.redWine, "wineglass", Color.red),
                     (.whiteWine, "wineglass", Color.yellow),
                     (.sparkling, "sparkles", Color.cyan),
-                    (.ipa, "hare", Color.orange),
+                    (.ipa, "hare", UNPColors.creamMuted()),
                     (.lager, "circle", Color.blue),
                     (.stout, "circle.fill", Color.black),
                     (.mocktails, "bubble", Color.green)
@@ -644,7 +694,7 @@ struct InterestsStep: View {
                         .frame(height: 56)
                         .background(
                             LinearGradient(
-                                gradient: Gradient(colors: [Color.yellow, Color.orange]),
+                                gradient: Gradient(colors: [Color.yellow, UNPColors.creamMuted()]),
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
@@ -733,6 +783,7 @@ struct InterestSelectionTag: View {
             )
             .opacity(isDisabled ? 0.5 : 1.0)
         }
+        .buttonStyle(.plain)
         .disabled(isDisabled)
     }
 }
@@ -806,7 +857,7 @@ struct SocialMediaStep: View {
                         .frame(height: 56)
                         .background(
                             LinearGradient(
-                                gradient: Gradient(colors: [Color.yellow, Color.orange]),
+                                gradient: Gradient(colors: [Color.yellow, UNPColors.creamMuted()]),
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )

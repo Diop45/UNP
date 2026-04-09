@@ -9,6 +9,7 @@ import SwiftUI
 
 // MARK: - Settings View
 struct SettingsView: View {
+    @EnvironmentObject var theme: AppTheme
     @Environment(\.presentationMode) var presentationMode
     @State private var notificationsEnabled = true
     @State private var locationServicesEnabled = true
@@ -19,16 +20,7 @@ struct SettingsView: View {
     
     var body: some View {
         ZStack {
-            // Dark purple background
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color(red: 0.15, green: 0.1, blue: 0.25),
-                    Color(red: 0.1, green: 0.05, blue: 0.2)
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            theme.primaryBackground.ignoresSafeArea()
             
             ScrollView {
                 VStack(spacing: 24) {
@@ -38,10 +30,10 @@ struct SettingsView: View {
                             presentationMode.wrappedValue.dismiss()
                         }) {
                             Image(systemName: "arrow.left")
-                                .foregroundColor(.white)
+                                .foregroundColor(theme.textPrimary)
                                 .font(.title3)
                                 .padding(8)
-                                .background(Color.black.opacity(0.3))
+                                .background(theme.inputBackground)
                                 .clipShape(Circle())
                         }
                         
@@ -49,7 +41,7 @@ struct SettingsView: View {
                         
                         Text("Settings")
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundColor(theme.textPrimary)
                         
                         Spacer()
                         
@@ -144,6 +136,7 @@ struct SettingsView: View {
 
 // MARK: - Settings Section
 struct SettingsSection<Content: View>: View {
+    @EnvironmentObject var theme: AppTheme
     let title: String
     let content: Content
     
@@ -156,13 +149,13 @@ struct SettingsSection<Content: View>: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
                 .font(.headline)
-                .foregroundColor(.white)
+                .foregroundColor(theme.textPrimary)
                 .padding(.horizontal, 4)
             
             VStack(spacing: 0) {
                 content
             }
-            .background(Color.black.opacity(0.3))
+            .background(theme.inputBackground)
             .cornerRadius(16)
         }
     }
@@ -170,6 +163,7 @@ struct SettingsSection<Content: View>: View {
 
 // MARK: - Settings Row
 struct SettingsRow: View {
+    @EnvironmentObject var theme: AppTheme
     let icon: String
     let title: String
     var subtitle: String? = nil
@@ -190,18 +184,18 @@ struct SettingsRow: View {
         Button(action: action) {
             HStack(spacing: 16) {
                 Image(systemName: icon)
-                    .foregroundColor(.yellow)
+                    .foregroundColor(theme.accent)
                     .font(.title3)
                     .frame(width: 24)
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.headline)
-                        .foregroundColor(.white)
+                        .foregroundColor(theme.textPrimary)
                     if let subtitle = subtitle {
                         Text(subtitle)
                             .font(.caption)
-                            .foregroundColor(.gray)
+                            .foregroundColor(theme.textSecondary)
                     }
                 }
                 
@@ -212,7 +206,7 @@ struct SettingsRow: View {
                         .labelsHidden()
                 } else {
                     Image(systemName: "chevron.right")
-                        .foregroundColor(.gray)
+                        .foregroundColor(theme.textSecondary)
                         .font(.caption)
                 }
             }
@@ -225,5 +219,6 @@ struct SettingsRow: View {
 
 #Preview {
     SettingsView()
+        .environmentObject(AppTheme.shared)
 }
 

@@ -1,0 +1,101 @@
+.unp-nudge__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.unp-nudge__card {
+  padding: 14px;
+}
+
+.unp-nudge__card h3 {
+  margin: 0 0 6px;
+}
+
+.unp-nudge__poll {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.unp-nudge__opt {
+  border: 1px solid var(--unp-border);
+  background: #141414;
+  color: var(--unp-text);
+  border-radius: 999px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.unp-nudge__opt--on {
+  border-color: var(--unp-accent);
+  color: var(--unp-accent-soft);
+}
+
+.unp-nudge__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.unp-nudge__plan h2 {
+  margin-top: 24px;
+}
+
+.unp-nudge__step {
+  margin-bottom: 16px;
+}
+
+.unp-nudge__step h4 {
+  margin: 8px 0;
+}
+
+.unp-nudge__opts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.unp-nudge__mini {
+  text-align: left;
+  border: 1px solid var(--unp-border);
+  background: #111;
+  color: var(--unp-text-muted);
+  border-radius: var(--unp-radius-sm);
+  padding: 10px;
+  cursor: pointer;
+}
+
+.unp-nudge__mood {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.unp-nudge__mood input {
+  border-radius: var(--unp-radius-sm);
+  border: 1px solid var(--unp-border);
+  background: #111;
+  color: var(--unp-text);
+  padding: 10px;
+}
+
+.unp-nudge__check {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0;
+  font-size: 0.9rem;
+  color: var(--unp-text-muted);
+}
+
+.unp-nudge__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}

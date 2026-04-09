@@ -37,7 +37,7 @@ enum Mood: String, CaseIterable, Identifiable {
         switch self {
         case .happy: return .yellow
         case .relaxed: return .green
-        case .energetic: return .orange
+        case .energetic: return UNPColors.creamMuted()
         case .romantic: return .pink
         case .celebratory: return .purple
         case .sophisticated: return .blue
@@ -268,7 +268,7 @@ struct PersonalizeFeedView: View {
                     .fontWeight(.bold)
                     .foregroundColor(.white)
                 
-                Text("Choose from available drinks on Sip SYNC by our bartenders.")
+                Text("Choose from available drinks on Until The Next Pour by our bartenders.")
                     .font(.body)
                     .foregroundColor(.white.opacity(0.8))
             }
@@ -660,10 +660,14 @@ struct DrinkSelectionCard: View {
         case .drinks:
             return .red
         case .food:
-            return .orange
+            return UNPColors.creamMuted()
         case .social:
             return .blue
         }
     }
+}
+
+#Preview("Personalize feed") {
+    PersonalizeFeedView(selectedInterests: .constant([]), onDone: {})
 }
 

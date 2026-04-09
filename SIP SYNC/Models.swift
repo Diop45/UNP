@@ -485,7 +485,7 @@ class SampleData {
             ),
             Location(
                 name: "Miranda Lrouge",
-                subtitle: "Sip Sync Bartender",
+                subtitle: "UNP Bartender",
                 address: "PORT - 456 Woodward Ave, Detroit, MI 48226",
                 latitude: 42.3350,
                 longitude: -83.0500,
@@ -499,7 +499,7 @@ class SampleData {
             ),
             Location(
                 name: "Chef André William",
-                subtitle: "Sip Sync Bartender",
+                subtitle: "UNP Bartender",
                 address: "Nelson Cocktail Lounge - 789 River Rd, Detroit, MI 48207",
                 latitude: 42.3600,
                 longitude: -83.0700,
@@ -513,7 +513,7 @@ class SampleData {
             ),
             Location(
                 name: "Maddy R",
-                subtitle: "Sip Sync Bartender",
+                subtitle: "UNP Bartender",
                 address: "Nelson Cocktail Lounge - 789 River Rd, Detroit, MI 48207",
                 latitude: 42.3600,
                 longitude: -83.0700,

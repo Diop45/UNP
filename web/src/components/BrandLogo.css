@@ -1,0 +1,24 @@
+.unp-brand {
+  display: block;
+  line-height: 0;
+}
+
+.unp-brand__mark {
+  display: block;
+  height: auto;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.unp-brand--sm .unp-brand__mark {
+  max-height: 40px;
+}
+
+.unp-brand--md .unp-brand__mark {
+  max-height: 56px;
+}
+
+.unp-brand--lg .unp-brand__mark {
+  max-height: 128px;
+}

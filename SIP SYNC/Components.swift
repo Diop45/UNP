@@ -9,6 +9,7 @@ import SwiftUI
 
 // MARK: - Reusable Header (Airbnb-style)
 struct SSHeader: View {
+    @EnvironmentObject var theme: AppTheme
     let logoText: String
     let location: String
     var onMenu: (() -> Void)?
@@ -21,64 +22,66 @@ struct SSHeader: View {
                 Text(logoText)
                     .font(.title2)
                     .fontWeight(.bold)
-                    .foregroundColor(.yellow)
+                    .foregroundColor(theme.accent)
                     .frame(width: 30, height: 30)
-                    .background(Color.yellow.opacity(0.2))
+                    .background(theme.accent.opacity(0.2))
                     .clipShape(Circle())
                 HStack(spacing: 4) {
                     Image(systemName: "location")
-                        .foregroundColor(.yellow)
+                        .foregroundColor(theme.accent)
                     Text(location)
-                        .foregroundColor(.white)
+                        .foregroundColor(theme.textPrimary)
                         .lineLimit(1)
                 }
             }
             Spacer()
             HStack(spacing: 16) {
                 Button(action: { onMenu?() }) {
-                    Image(systemName: "line.3.horizontal").foregroundColor(.white)
+                    Image(systemName: "line.3.horizontal").foregroundColor(theme.textPrimary)
                 }
                 Button(action: { onNotifications?() }) {
-                    Image(systemName: "bell").foregroundColor(.white)
+                    Image(systemName: "bell").foregroundColor(theme.textPrimary)
                 }
                 Button(action: { onProfile?() }) {
                     Circle()
-                        .fill(Color.gray)
+                        .fill(theme.textSecondary)
                         .frame(width: 32, height: 32)
-                        .overlay(Image(systemName: "person").foregroundColor(.white))
+                        .overlay(Image(systemName: "person").foregroundColor(theme.textPrimary))
                 }
             }
         }
     }
 }
 
-// MARK: - Search Bar (dark theme)
+// MARK: - Search Bar (theme-aware)
 struct SSSearchBar: View {
+    @EnvironmentObject var theme: AppTheme
     @Binding var text: String
     var placeholder: String = "Search..."
     var onSubmit: (() -> Void)?
     
     var body: some View {
         HStack {
-            Image(systemName: "magnifyingglass").foregroundColor(.gray)
+            Image(systemName: "magnifyingglass").foregroundColor(theme.textSecondary)
             TextField(placeholder, text: $text)
-                .foregroundColor(.white)
+                .foregroundColor(theme.textPrimary)
                 .submitLabel(.search)
                 .onSubmit { onSubmit?() }
             if !text.isEmpty {
                 Button(action: { text = "" }) {
-                    Image(systemName: "xmark.circle.fill").foregroundColor(.gray)
+                    Image(systemName: "xmark.circle.fill").foregroundColor(theme.textSecondary)
                 }
             }
         }
         .padding()
-        .background(Color.black.opacity(0.3))
+        .background(theme.inputBackground)
         .cornerRadius(12)
     }
 }
 
 // MARK: - Section Header
 struct SectionHeader: View {
+    @EnvironmentObject var theme: AppTheme
     let title: String
     var subtitle: String? = nil
     var showChevron: Bool = true
@@ -92,11 +95,11 @@ struct SectionHeader: View {
                 Text(title)
                     .font(.title2)
                     .fontWeight(.bold)
-                    .foregroundColor(.white)
+                    .foregroundColor(theme.textPrimary)
                 if let subtitle = subtitle {
                     Text(subtitle)
                         .font(.subheadline)
-                        .foregroundColor(.gray)
+                        .foregroundColor(theme.textSecondary)
                 }
             }
             Spacer(minLength: 12)
@@ -104,13 +107,13 @@ struct SectionHeader: View {
                 Button(action: onAction) {
                     Text(actionTitle)
                         .font(.subheadline)
-                        .foregroundColor(.yellow)
+                        .foregroundColor(theme.accent)
                 }
             } else if showChevron {
                 Button(action: { onChevronTap?() }) {
                     Image(systemName: "chevron.right")
                         .font(.subheadline)
-                        .foregroundColor(.gray)
+                        .foregroundColor(theme.textSecondary)
                 }
             }
         }
@@ -119,6 +122,7 @@ struct SectionHeader: View {
 
 // MARK: - Pill
 struct Pill: View {
+    @EnvironmentObject var theme: AppTheme
     let title: String
     let isSelected: Bool
     let action: () -> Void
@@ -127,14 +131,14 @@ struct Pill: View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.white)
+                .foregroundColor(isSelected ? .white : theme.textPrimary)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
-                .background(isSelected ? Color.black : Color.clear)
+                .background(isSelected ? theme.accent : Color.clear)
                 .cornerRadius(20)
                 .overlay(
                     RoundedRectangle(cornerRadius: 20)
-                        .stroke(isSelected ? Color.yellow : Color.white, lineWidth: 1)
+                        .stroke(isSelected ? theme.accent : theme.borderColor, lineWidth: 1)
                 )
         }
     }
@@ -142,6 +146,7 @@ struct Pill: View {
 
 // MARK: - Social Post Components
 struct SocialPostCard: View {
+    @EnvironmentObject var theme: AppTheme
     let post: SocialPost
     @Binding var cartItems: [OrderItem]
     let onLike: () -> Void
@@ -156,11 +161,11 @@ struct SocialPostCard: View {
             if let reposter = post.repostedBy {
                 HStack(spacing: 8) {
                     Image(systemName: "arrow.2.squarepath")
-                        .foregroundColor(.gray)
+                        .foregroundColor(theme.textSecondary)
                         .font(.caption)
                     Text("\(reposter.username) reposted")
                         .font(.caption)
-                        .foregroundColor(.gray)
+                        .foregroundColor(theme.textSecondary)
                     Spacer()
                 }
                 .padding(.horizontal, 16)
@@ -170,32 +175,32 @@ struct SocialPostCard: View {
             // Author info
             HStack(spacing: 12) {
                 Circle()
-                    .fill(Color.gray)
+                    .fill(theme.textSecondary)
                     .frame(width: 40, height: 40)
-                    .overlay(Image(systemName: "person").foregroundColor(.white))
+                    .overlay(Image(systemName: "person").foregroundColor(theme.textPrimary))
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 4) {
                         Text(post.author.username)
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundColor(theme.textPrimary)
                         if post.author.verified {
-                            Image(systemName: "checkmark.seal.fill").foregroundColor(.yellow).font(.caption)
+                            Image(systemName: "checkmark.seal.fill").foregroundColor(theme.accent).font(.caption)
                         }
                     }
                     HStack(spacing: 4) {
                         if let location = post.author.location {
-                            Text(location).font(.caption).foregroundColor(.gray)
+                            Text(location).font(.caption).foregroundColor(theme.textSecondary)
                         }
-                        Text("•").font(.caption).foregroundColor(.gray)
-                        Text(timeAgoString(from: post.createdAt)).font(.caption).foregroundColor(.gray)
+                        Text("•").font(.caption).foregroundColor(theme.textSecondary)
+                        Text(timeAgoString(from: post.createdAt)).font(.caption).foregroundColor(theme.textSecondary)
                     }
                 }
                 Spacer()
-                Button(action: {}) { Image(systemName: "ellipsis").foregroundColor(.gray) }
+                Button(action: {}) { Image(systemName: "ellipsis").foregroundColor(theme.textSecondary) }
             }
             
             // Post content
-            Text(post.content).font(.body).foregroundColor(.white)
+            Text(post.content).font(.body).foregroundColor(theme.textPrimary)
             
             // Tags
             if !post.tags.isEmpty {
@@ -204,10 +209,10 @@ struct SocialPostCard: View {
                         ForEach(post.tags, id: \.self) { tag in
                             Text(tag)
                                 .font(.caption)
-                                .foregroundColor(.yellow)
+                                .foregroundColor(theme.accent)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
-                                .background(Color.yellow.opacity(0.2))
+                                .background(theme.accent.opacity(0.2))
                                 .cornerRadius(8)
                         }
                     }
@@ -261,23 +266,23 @@ struct SocialPostCard: View {
                 // Cart icon - adds item to cart
                 Button(action: onAddToCart) {
                     HStack(spacing: 4) {
-                        Image(systemName: "cart.badge.plus").foregroundColor(.yellow)
-                        Text("Add").font(.caption).foregroundColor(.yellow)
+                        Image(systemName: "cart.badge.plus").foregroundColor(theme.accent)
+                        Text("Add").font(.caption).foregroundColor(theme.accent)
                     }
                 }
                 Spacer()
                 Button(action: onTip) {
                     Text("Tip")
                         .font(.caption)
-                        .foregroundColor(.yellow)
+                        .foregroundColor(theme.accent)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
-                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.yellow, lineWidth: 1))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(theme.accent, lineWidth: 1))
                 }
             }
         }
         .padding(16)
-        .background(Color.black.opacity(0.3))
+        .background(theme.cardBackground)
         .cornerRadius(16)
     }
     
@@ -291,6 +296,7 @@ struct SocialPostCard: View {
 
 // MARK: - User Type Filter (chip style)
 struct UserTypeFilter: View {
+    @EnvironmentObject var theme: AppTheme
     @Binding var selectedType: UserType?
     let types: [UserType]
     
@@ -300,23 +306,23 @@ struct UserTypeFilter: View {
                 Button(action: { selectedType = nil }) {
                     Text("All")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(selectedType == nil ? .black : .white)
+                        .foregroundColor(selectedType == nil ? .white : theme.textPrimary)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
-                        .background(selectedType == nil ? Color.yellow : Color.clear)
+                        .background(selectedType == nil ? theme.accent : Color.clear)
                         .cornerRadius(20)
-                        .overlay(RoundedRectangle(cornerRadius: 20).stroke(selectedType == nil ? Color.yellow : Color.white, lineWidth: 1))
+                        .overlay(RoundedRectangle(cornerRadius: 20).stroke(selectedType == nil ? theme.accent : theme.borderColor, lineWidth: 1))
                 }
                 ForEach(types, id: \.self) { type in
                     Button(action: { selectedType = type }) {
                         Text(type.rawValue)
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(selectedType == type ? .black : .white)
+                            .foregroundColor(selectedType == type ? .white : theme.textPrimary)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 10)
-                            .background(selectedType == type ? Color.yellow : Color.clear)
+                            .background(selectedType == type ? theme.accent : Color.clear)
                             .cornerRadius(20)
-                            .overlay(RoundedRectangle(cornerRadius: 20).stroke(selectedType == type ? Color.yellow : Color.white, lineWidth: 1))
+                            .overlay(RoundedRectangle(cornerRadius: 20).stroke(selectedType == type ? theme.accent : theme.borderColor, lineWidth: 1))
                     }
                 }
             }
@@ -356,6 +362,7 @@ struct SelectableTag: View {
 
 // MARK: - Airbnb-style Search Pill
 struct SearchPillField: View {
+    @EnvironmentObject var theme: AppTheme
     @Binding var text: String
     var placeholder: String = "Start your search"
     var onTap: (() -> Void)? = nil
@@ -365,27 +372,18 @@ struct SearchPillField: View {
             onTap?()
         }) {
         HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass").foregroundColor(.gray)
+            Image(systemName: "magnifyingglass").foregroundColor(theme.textSecondary)
                 Text(text.isEmpty ? placeholder : text)
-                    .foregroundColor(text.isEmpty ? .gray : .black)
+                    .foregroundColor(text.isEmpty ? theme.textSecondary : theme.textPrimary)
                     .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 16)
         .frame(height: 44)
-        .background(
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color(red: 0.15, green: 0.1, blue: 0.25),
-                    Color(red: 0.2, green: 0.15, blue: 0.3)
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
+        .background(theme.inputBackground)
         .cornerRadius(22)
         .overlay(
             RoundedRectangle(cornerRadius: 22)
-                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                .stroke(theme.borderColor, lineWidth: 1)
         )
         }
         .buttonStyle(PlainButtonStyle())
@@ -608,6 +606,7 @@ struct LiquidGlassSearchBar: View {
 
 // MARK: - Top Navigation Bar (Airbnb-style)
 struct TopNavigationBar: View {
+    @EnvironmentObject var theme: AppTheme
     @Binding var selectedCategory: UserType?
     
     private let categories = [
@@ -620,21 +619,12 @@ struct TopNavigationBar: View {
         VStack(spacing: 0) {
             // Top section with logo and actions
             HStack {
-                // Logo
-                HStack(spacing: 8) {
-                    Text("S")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundColor(.yellow)
-                        .frame(width: 30, height: 30)
-                        .background(Color.yellow.opacity(0.2))
-                        .clipShape(Circle())
-                    
-                    Text("SipSync")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                }
+                // Brand lockup (SipSyncLogo asset — UN ribbon + glass + wordmark)
+                Image("SipSyncLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: 160, maxHeight: 40)
+                    .accessibilityLabel("Until The Next Pour")
                 
                 Spacer()
                 
@@ -642,23 +632,23 @@ struct TopNavigationBar: View {
                 HStack(spacing: 16) {
                     Button(action: {}) {
                         Image(systemName: "line.3.horizontal")
-                            .foregroundColor(.yellow)
+                            .foregroundColor(theme.accent)
                     }
                     Button(action: {}) {
                         Image(systemName: "bell")
-                            .foregroundColor(.yellow)
+                            .foregroundColor(theme.accent)
                     }
                     Button(action: {}) {
                         Image(systemName: "bolt.fill")
-                            .foregroundColor(.yellow)
+                            .foregroundColor(theme.accent)
                     }
                     Button(action: {}) {
                         Circle()
-                            .fill(Color.yellow.opacity(0.2))
+                            .fill(theme.accent.opacity(0.2))
                             .frame(width: 32, height: 32)
                             .overlay(
                                 Image(systemName: "person")
-                                    .foregroundColor(.yellow)
+                                    .foregroundColor(theme.accent)
                             )
                     }
                 }
@@ -676,15 +666,15 @@ struct TopNavigationBar: View {
                         VStack(spacing: 6) {
                             Image(systemName: icon)
                                 .font(.system(size: 18))
-                                .foregroundColor(.yellow)
+                                .foregroundColor(theme.accent)
                             
                             Text(title)
                                 .font(.footnote)
                                 .fontWeight(.medium)
-                                .foregroundColor(selectedCategory == category ? .white : .gray)
+                                .foregroundColor(selectedCategory == category ? theme.textPrimary : theme.textSecondary)
                             
                             Rectangle()
-                                .fill(selectedCategory == category ? Color.yellow : .clear)
+                                .fill(selectedCategory == category ? theme.accent : .clear)
                                 .frame(height: 2)
                                 .cornerRadius(1)
                         }
@@ -696,17 +686,8 @@ struct TopNavigationBar: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 16)
         }
-        .background(
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color(red: 0.1, green: 0.05, blue: 0.2),
-                    Color(red: 0.15, green: 0.1, blue: 0.25)
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
-        .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
+        .background(theme.cardBackground)
+        .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
     }
 }
 
@@ -1611,4 +1592,32 @@ struct StatItem: View {
     }
 }
 
+#Preview("Shared components") {
+    ScrollView {
+        VStack(alignment: .leading, spacing: 24) {
+            SSHeader(
+                logoText: "UNP",
+                location: "Detroit",
+                onMenu: {},
+                onNotifications: {},
+                onProfile: {}
+            )
+            SSSearchBar(text: .constant("Negroni"))
+            TopNavigationBar(selectedCategory: .constant(.consumer))
+            SocialPostCard(
+                post: SampleData.shared.sampleSocialPosts[0],
+                cartItems: .constant([]),
+                onLike: {},
+                onAddToCart: {},
+                onComment: {},
+                onRepost: {},
+                onTip: {}
+            )
+            StatItem(count: 42, label: "Followers")
+        }
+        .padding()
+    }
+    .background(Color.black)
+    .environmentObject(AppTheme.shared)
+}
 

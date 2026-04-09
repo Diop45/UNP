@@ -9,6 +9,7 @@ import SwiftUI
 
 // MARK: - Sip Sync Bartenders Badge
 struct SipSyncBartendersBadge: View {
+    @EnvironmentObject var theme: AppTheme
     let bartenders: [SocialUser]
     @State private var showBartenderDetails = false
     @State private var selectedBartender: SocialUser?
@@ -17,9 +18,9 @@ struct SipSyncBartendersBadge: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 Image(systemName: "checkmark.seal.fill")
-                    .foregroundColor(.yellow)
+                    .foregroundColor(theme.accent)
                     .font(.headline)
-                Text("Sip Sync Bartender")
+                Text("UNP Bartender")
                     .font(.headline)
                     .foregroundColor(.black)
                 Text("\(bartenders.count)")
@@ -27,7 +28,7 @@ struct SipSyncBartendersBadge: View {
                     .foregroundColor(.gray)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(Color.yellow.opacity(0.2))
+                    .background(theme.accent.opacity(0.2))
                     .cornerRadius(8)
             }
             
@@ -47,8 +48,8 @@ struct SipSyncBartendersBadge: View {
         .background(
             LinearGradient(
                 gradient: Gradient(colors: [
-                    Color.yellow.opacity(0.1),
-                    Color.orange.opacity(0.05)
+                    theme.accent.opacity(0.1),
+                    theme.accent.opacity(0.05)
                 ]),
                 startPoint: .leading,
                 endPoint: .trailing
@@ -57,7 +58,7 @@ struct SipSyncBartendersBadge: View {
         .cornerRadius(12)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.yellow.opacity(0.3), lineWidth: 1)
+                .stroke(theme.accent.opacity(0.3), lineWidth: 1)
         )
         .sheet(isPresented: $showBartenderDetails) {
             if let bartender = selectedBartender {
@@ -69,6 +70,7 @@ struct SipSyncBartendersBadge: View {
 
 // MARK: - Bartender Mini Card
 struct BartenderMiniCard: View {
+    @EnvironmentObject var theme: AppTheme
     let bartender: SocialUser
     let onTap: () -> Void
     
@@ -81,7 +83,7 @@ struct BartenderMiniCard: View {
                         LinearGradient(
                             gradient: Gradient(colors: [
                                 Color.yellow.opacity(0.3),
-                                Color.orange.opacity(0.3)
+                                UNPColors.creamMuted(0.3)
                             ]),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -103,7 +105,7 @@ struct BartenderMiniCard: View {
                             .lineLimit(1)
                         if bartender.verified {
                             Image(systemName: "checkmark.seal.fill")
-                                .foregroundColor(.yellow)
+                                .foregroundColor(theme.accent)
                                 .font(.caption2)
                         }
                     }
@@ -127,7 +129,7 @@ struct BartenderMiniCard: View {
             .cornerRadius(8)
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color.yellow.opacity(0.2), lineWidth: 1)
+                    .stroke(theme.accent.opacity(0.2), lineWidth: 1)
             )
         }
         .buttonStyle(PlainButtonStyle())
@@ -137,6 +139,7 @@ struct BartenderMiniCard: View {
 
 // MARK: - Bartender Detail Sheet (Quick View)
 struct BartenderQuickDetailSheet: View {
+    @EnvironmentObject var theme: AppTheme
     let bartender: SocialUser
     @Environment(\.presentationMode) var presentationMode
     
@@ -151,7 +154,7 @@ struct BartenderQuickDetailSheet: View {
                                 LinearGradient(
                                     gradient: Gradient(colors: [
                                         Color.yellow.opacity(0.3),
-                                        Color.orange.opacity(0.3)
+                                        UNPColors.creamMuted(0.3)
                                     ]),
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
@@ -172,7 +175,7 @@ struct BartenderQuickDetailSheet: View {
                                     .foregroundColor(.black)
                                 if bartender.verified {
                                     Image(systemName: "checkmark.seal.fill")
-                                        .foregroundColor(.yellow)
+                                        .foregroundColor(theme.accent)
                                         .font(.title3)
                                 }
                             }
@@ -200,14 +203,14 @@ struct BartenderQuickDetailSheet: View {
                     // Sip Sync Badge
                     HStack {
                         Image(systemName: "checkmark.seal.fill")
-                            .foregroundColor(.yellow)
-                        Text("Sip Sync Verified Bartender")
+                            .foregroundColor(theme.accent)
+                        Text("UNP Verified Bartender")
                             .font(.headline)
                             .foregroundColor(.black)
                     }
                     .padding()
                     .frame(maxWidth: .infinity)
-                    .background(Color.yellow.opacity(0.1))
+                    .background(theme.accent.opacity(0.1))
                     .cornerRadius(12)
                     
                     // About Section

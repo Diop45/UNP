@@ -1,0 +1,14 @@
+.unp-guest {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.unp-guest__banner {
+  padding: 16px;
+}
+
+.unp-guest__title {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+}
